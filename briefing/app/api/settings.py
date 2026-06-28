@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import delete
@@ -389,34 +389,41 @@ async def get_schedule(config: AppConfig = Depends(get_config)):
 
 
 @router.put("/schedule")
-async def update_schedule(body: ScheduleBody, config: AppConfig = Depends(get_config)):
+async def update_schedule(
+    cadence: str = Form("off"),
+    time: str = Form("07:00"),
+    day_of_week: str = Form("mon"),
+    daemon_mode: str | None = Form(None),  # checkbox: present=on, absent=None
+    config: AppConfig = Depends(get_config),
+):
     from app.core import scheduler as sched_mod
 
+    daemon_mode_bool = daemon_mode is not None
     valid = {"off", "daily", "every_other_day", "weekly"}
-    if body.cadence not in valid:
+    if cadence not in valid:
         raise HTTPException(status_code=400, detail=f"Invalid cadence. Must be one of: {sorted(valid)}")
     _save_settings(config, {
-        "cadence": body.cadence,
-        "schedule_time": body.time,
-        "day_of_week": body.day_of_week,
-        "daemon_mode": body.daemon_mode,
+        "cadence": cadence,
+        "schedule_time": time,
+        "day_of_week": day_of_week,
+        "daemon_mode": daemon_mode_bool,
     })
 
     # Update in-process scheduler immediately
     if sched_mod.scheduler.running:
-        sched_mod.schedule_run(body.cadence, body.time, config, day_of_week=body.day_of_week)
+        sched_mod.schedule_run(cadence, time, config, day_of_week=day_of_week)
 
     # Start or stop daemon if requested
-    if body.daemon_mode:
+    if daemon_mode_bool:
         if not sched_mod.check_daemon_alive(config):
             sched_mod.start_daemon(config)
     else:
         sched_mod.stop_daemon(config)
 
     return {"data": {
-        "cadence": body.cadence,
-        "time": body.time,
-        "next_run": _next_run(body.cadence, body.time),
-        "daemon_mode": body.daemon_mode,
+        "cadence": cadence,
+        "time": time,
+        "next_run": _next_run(cadence, time),
+        "daemon_mode": daemon_mode_bool,
         "daemon_alive": sched_mod.check_daemon_alive(config),
     }}
