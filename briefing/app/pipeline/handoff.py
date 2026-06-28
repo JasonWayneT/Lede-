@@ -33,8 +33,11 @@ class HandoffPacket:
 
 
 def _serialize(obj: object) -> object:
+    import datetime
     if isinstance(obj, np.ndarray):
         return obj.tolist()
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        return obj.isoformat()
     raise TypeError(f"Not serializable: {type(obj)}")
 
 

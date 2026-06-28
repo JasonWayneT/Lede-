@@ -145,8 +145,7 @@ async def fetch_unprocessed_emails(*, config: AppConfig, session: AsyncSession) 
         while True:
             req = service.users().messages().list(
                 userId="me",
-                labelIds=[config.gmail_label],
-                q=lookback_q,
+                q=f"label:{config.gmail_label} {lookback_q}",
                 pageToken=page_token,
             )
             resp = req.execute()

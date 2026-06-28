@@ -31,16 +31,25 @@ def _depth_tier(baseline: str, source_count: int) -> str:
 
 
 def _parse_frame_response(response: str) -> dict:
-    try:
-        data = json.loads(response.strip())
-        return {
-            "lead_angle": str(data.get("lead_angle", "")),
-            "local_stakes": str(data.get("local_stakes", "")),
-            "guardrails": list(data.get("guardrails", [])),
-        }
-    except (json.JSONDecodeError, ValueError):
-        logger.warning("Frame: could not parse LLM JSON response; using defaults")
-        return {"lead_angle": "", "local_stakes": "", "guardrails": []}
+    import re
+    text = response.strip()
+    # Try direct parse first, then extract JSON block if LLM added preamble
+    candidates = [text]
+    m = re.search(r"\{[\s\S]*\}", text)
+    if m:
+        candidates.append(m.group(0))
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate)
+            return {
+                "lead_angle": str(data.get("lead_angle", "")),
+                "local_stakes": str(data.get("local_stakes", "")),
+                "guardrails": list(data.get("guardrails", [])),
+            }
+        except (json.JSONDecodeError, ValueError):
+            continue
+    logger.warning("Frame: could not parse LLM JSON response; using defaults")
+    return {"lead_angle": "", "local_stakes": "", "guardrails": []}
 
 
 async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:

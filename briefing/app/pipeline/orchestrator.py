@@ -201,12 +201,25 @@ async def run_pipeline(run_id: int, config: AppConfig) -> None:
                         logger.error("TTS failed (non-fatal): %s", tts_err.message)
                         _emit(run_id, "log", {"level": "warning", "stage": "tts", "message": f"Audio skipped: {tts_err.message}", "ts": _ts()})
 
+            # Tally section breakdown from drafted stories
+            section_breakdown: dict[str, int] = {}
+            for story in packet.drafted_stories:
+                sec = story.get("section_name", "Other") if isinstance(story, dict) else "Other"
+                section_breakdown[sec] = section_breakdown.get(sec, 0) + 1
+            story_count = sum(section_breakdown.values())
+
             # Atomic final commit
             async with session.begin():
                 run = await session.get(Run, run_id)
                 if run:
                     run.status = "complete"
                     run.error = None
+                    from sqlalchemy.orm.attributes import flag_modified
+                    existing_cfg = dict(run.section_config or {})
+                    existing_cfg["story_count"] = story_count
+                    existing_cfg["section_breakdown"] = section_breakdown
+                    run.section_config = existing_cfg
+                    flag_modified(run, "section_config")
                     session.add(run)
 
                 session.add(BriefingOutput(
