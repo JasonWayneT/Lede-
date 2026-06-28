@@ -15,7 +15,7 @@ from typing import Any
 from google.auth import exceptions as google_auth_exceptions
 from google.auth.transport.requests import Request
 from google.oauth2 import credentials as google_credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from sqlalchemy import select
@@ -39,12 +39,46 @@ class GmailEmail:
     raw_html: str
 
 
-def authorize(credentials_path: Path | None = None) -> None:
-    """Run a local OAuth flow and store the resulting token in the OS keychain."""
-    path = credentials_path or Path("credentials.json")
-    flow = InstalledAppFlow.from_client_secrets_file(str(path), scopes=[GMAIL_READONLY_SCOPE])
-    creds = flow.run_local_server(port=0)
-    credential_store.set(credential_store.GMAIL_OAUTH_TOKEN, creds.to_json())
+OAUTH_CALLBACK_URI = "http://localhost:8001/oauth/callback"
+
+
+def get_credentials_path(config: AppConfig) -> Path:
+    _app_root = Path(__file__).parent.parent  # briefing/app/
+    candidates = [
+        config.data_dir / "credentials.json",
+        _app_root.parent / "data" / "credentials.json",  # briefing/data/
+        _app_root.parent / "credentials.json",             # briefing/
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    raise FileNotFoundError(
+        "credentials.json not found. Place it in briefing/data/ or the briefing/ root."
+    )
+
+
+def build_auth_url(config: AppConfig) -> str:
+    """Return the Google OAuth consent URL to redirect the user to."""
+    path = get_credentials_path(config)
+    flow = Flow.from_client_secrets_file(
+        str(path),
+        scopes=[GMAIL_READONLY_SCOPE],
+        redirect_uri=OAUTH_CALLBACK_URI,
+    )
+    auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+    return auth_url
+
+
+def exchange_code(code: str, config: AppConfig) -> None:
+    """Exchange the OAuth callback code for a token and store it."""
+    path = get_credentials_path(config)
+    flow = Flow.from_client_secrets_file(
+        str(path),
+        scopes=[GMAIL_READONLY_SCOPE],
+        redirect_uri=OAUTH_CALLBACK_URI,
+    )
+    flow.fetch_token(code=code)
+    credential_store.set(credential_store.GMAIL_OAUTH_TOKEN, flow.credentials.to_json())
 
 
 def get_service(*, stage_name: str) -> Any:

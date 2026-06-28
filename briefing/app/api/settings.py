@@ -111,21 +111,26 @@ async def update_gmail_label(body: GmailLabelBody, config: AppConfig = Depends(g
     return {"data": {"label": body.label}}
 
 
+@router.get("/gmail/authorize-redirect")
+async def authorize_redirect(config: AppConfig = Depends(get_config)):
+    from app.services import gmail
+    from fastapi.responses import RedirectResponse
+    try:
+        auth_url = gmail.build_auth_url(config)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return RedirectResponse(auth_url)
+
+
 @router.post("/gmail/reauthorize")
 async def reauthorize_gmail(config: AppConfig = Depends(get_config)):
     from app.services import gmail
+    from fastapi.responses import RedirectResponse
     try:
-        await gmail.authorize(config)
-    except Exception as e:
+        auth_url = gmail.build_auth_url(config)
+    except FileNotFoundError as e:
         raise HTTPException(status_code=500, detail=str(e))
-    token_json = credentials.get(credentials.GMAIL_OAUTH_TOKEN)
-    authorized_email = None
-    if token_json:
-        try:
-            authorized_email = json.loads(token_json).get("email")
-        except Exception:
-            pass
-    return {"data": {"oauth_status": "authorized", "authorized_email": authorized_email}}
+    return RedirectResponse(auth_url, status_code=303)
 
 
 # ---------------------------------------------------------------------------

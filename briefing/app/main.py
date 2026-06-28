@@ -162,6 +162,22 @@ async def history_redirect(request: Request):
     return RedirectResponse("/archive")
 
 
+@app.get("/oauth/callback", response_class=HTMLResponse)
+async def oauth_callback(request: Request, code: str | None = None, error: str | None = None):
+    from app.services import gmail
+
+    if error or not code:
+        return RedirectResponse("/setup/step/1?error=access_denied")
+
+    config = AppConfig()
+    try:
+        gmail.exchange_code(code, config)
+    except Exception as e:
+        return RedirectResponse(f"/setup/step/1?error={str(e)[:80]}")
+
+    return RedirectResponse("/setup/step/2")
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     import json
