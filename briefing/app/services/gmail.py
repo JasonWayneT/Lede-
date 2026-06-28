@@ -41,6 +41,10 @@ class GmailEmail:
 
 OAUTH_CALLBACK_URI = "http://localhost:8001/oauth/callback"
 
+# Holds code_verifier between the auth URL generation and the callback exchange.
+# Keyed by OAuth state param. Single-user local app so a module-level dict is fine.
+_pending_verifiers: dict[str, str] = {}
+
 
 def get_credentials_path(config: AppConfig) -> Path:
     _app_root = Path(__file__).parent.parent  # briefing/app/
@@ -65,11 +69,14 @@ def build_auth_url(config: AppConfig) -> str:
         scopes=[GMAIL_READONLY_SCOPE],
         redirect_uri=OAUTH_CALLBACK_URI,
     )
-    auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+    auth_url, state = flow.authorization_url(prompt="consent", access_type="offline")
+    # Stash the code verifier so exchange_code can use it
+    if hasattr(flow, "code_verifier") and flow.code_verifier:
+        _pending_verifiers[state] = flow.code_verifier
     return auth_url
 
 
-def exchange_code(code: str, config: AppConfig) -> None:
+def exchange_code(code: str, state: str, config: AppConfig) -> None:
     """Exchange the OAuth callback code for a token and store it."""
     path = get_credentials_path(config)
     flow = Flow.from_client_secrets_file(
@@ -77,6 +84,9 @@ def exchange_code(code: str, config: AppConfig) -> None:
         scopes=[GMAIL_READONLY_SCOPE],
         redirect_uri=OAUTH_CALLBACK_URI,
     )
+    code_verifier = _pending_verifiers.pop(state, None)
+    if code_verifier:
+        flow.code_verifier = code_verifier
     flow.fetch_token(code=code)
     credential_store.set(credential_store.GMAIL_OAUTH_TOKEN, flow.credentials.to_json())
 
@@ -108,9 +118,26 @@ def get_service(*, stage_name: str) -> Any:
         ) from e
 
 
+def _lookback_query(config: AppConfig) -> str:
+    """Return a Gmail search query restricting to the configured lookback window."""
+    import json
+    from datetime import date, timedelta
+    settings_path = Path(__file__).parent.parent.parent / "data" / "settings.json"
+    stored: dict = {}
+    if settings_path.exists():
+        try:
+            stored = json.loads(settings_path.read_text())
+        except Exception:
+            pass
+    days = int(stored.get("lookback_days", 7))
+    cutoff = (date.today() - timedelta(days=days)).strftime("%Y/%m/%d")
+    return f"after:{cutoff}"
+
+
 async def fetch_unprocessed_emails(*, config: AppConfig, session: AsyncSession) -> list[GmailEmail]:
     """Fetch emails from a label and filter out already-processed message IDs."""
     service = get_service(stage_name="ingest")
+    lookback_q = _lookback_query(config)
 
     try:
         message_ids: list[str] = []
@@ -119,6 +146,7 @@ async def fetch_unprocessed_emails(*, config: AppConfig, session: AsyncSession) 
             req = service.users().messages().list(
                 userId="me",
                 labelIds=[config.gmail_label],
+                q=lookback_q,
                 pageToken=page_token,
             )
             resp = req.execute()

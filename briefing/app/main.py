@@ -220,6 +220,7 @@ async def settings_page(request: Request):
     return templates.TemplateResponse(request, "settings.html", {
         "active_page": "settings",
         "gmail_label": config.gmail_label,
+        "lookback_days": stored.get("lookback_days", "7"),
         "oauth_status": oauth_status,
         "authorized_email": authorized_email,
         "briefing_depth": config.briefing_depth,

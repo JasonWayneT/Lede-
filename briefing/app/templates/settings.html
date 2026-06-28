@@ -31,8 +31,17 @@
                placeholder="e.g. Newsletters" style="max-width:360px"/>
         <p class="form-hint">Emails with this label will be pulled on each run</p>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="lookback-days">Lookback window</label>
+        <select class="form-select" id="lookback-days" name="lookback_days" style="max-width:220px">
+          {% for val, label in [("1","Last 24 hours"),("3","Last 3 days"),("7","Last 7 days"),("14","Last 14 days"),("30","Last 30 days")] %}
+          <option value="{{ val }}" {% if lookback_days == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <p class="form-hint">Only pull emails received within this window</p>
+      </div>
       <div class="form-actions">
-        <button class="btn btn-primary" type="submit">Save label</button>
+        <button class="btn btn-primary" type="submit">Save</button>
         <span class="form-feedback" id="gmail-feedback"></span>
       </div>
     </form>

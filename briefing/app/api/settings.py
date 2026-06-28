@@ -100,15 +100,15 @@ async def get_gmail_settings(config: AppConfig = Depends(get_config)):
     return {"data": {"label": config.gmail_label, "oauth_status": oauth_status, "authorized_email": authorized_email}}
 
 
-class GmailLabelBody(BaseModel):
-    label: str
-
-
 @router.put("/gmail")
-async def update_gmail_label(body: GmailLabelBody, config: AppConfig = Depends(get_config)):
-    config.gmail_label = body.label
-    _save_settings(config, {"gmail_label": body.label})
-    return {"data": {"label": body.label}}
+async def update_gmail_label(
+    label: str = Form("Newsletters"),
+    lookback_days: str = Form("7"),
+    config: AppConfig = Depends(get_config),
+):
+    config.gmail_label = label
+    _save_settings(config, {"gmail_label": label, "lookback_days": lookback_days})
+    return {"data": {"label": label, "lookback_days": lookback_days}}
 
 
 @router.get("/gmail/authorize-redirect")
