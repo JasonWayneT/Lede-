@@ -1,0 +1,20 @@
+<!doctype html>
+<html data-theme="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Briefing — Setup</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  </head>
+  <body>
+    <main class="container" style="max-width:640px;margin-top:4rem">
+      <hgroup>
+        <h1>Briefing Setup</h1>
+        <p>Step {{ step }} of 4</p>
+      </hgroup>
+      <progress value="{{ step }}" max="4"></progress>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

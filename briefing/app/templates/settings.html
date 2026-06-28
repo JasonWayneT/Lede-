@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Lede — Settings{% endblock %}
+
+{% block content %}
+<div class="page">
+  <h1 class="page-heading">Settings</h1>
+  <p class="page-subheading">Configure your inbox, AI provider, and schedule</p>
+
+  <!-- ─── Inbox Configuration ──────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-header">
+      <div>
+        <p class="settings-section-title">Inbox Configuration</p>
+        <p class="settings-section-subtitle">Gmail label to pull newsletters from</p>
+      </div>
+    </div>
+
+    <div class="oauth-status">
+      <span class="oauth-dot {% if oauth_status == 'authorized' %}ok{% else %}err{% endif %}"></span>
+      {% if oauth_status == 'authorized' %}
+        Connected{% if authorized_email %} as {{ authorized_email }}{% endif %}
+      {% else %}
+        Not connected — re-authorize to fetch emails
+      {% endif %}
+    </div>
+
+    <form hx-put="/api/settings/gmail" hx-swap="none" hx-on::after-request="showFeedback(this, event)">
+      <div class="form-group">
+        <label class="form-label" for="gmail-label">Gmail label</label>
+        <input class="form-input" type="text" id="gmail-label" name="label" value="{{ gmail_label }}"
+               placeholder="e.g. Newsletters" style="max-width:360px"/>
+        <p class="form-hint">Emails with this label will be pulled on each run</p>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Save label</button>
+        <span class="form-feedback" id="gmail-feedback"></span>
+      </div>
+    </form>
+
+    <form hx-post="/api/settings/gmail/reauthorize" hx-swap="none" style="margin-top:20px">
+      <button class="btn btn-ghost" type="submit">Re-authorize Gmail →</button>
+    </form>
+  </div>
+
+  <!-- ─── Briefing Depth ───────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-header">
+      <div>
+        <p class="settings-section-title">Briefing Depth</p>
+        <p class="settings-section-subtitle">Controls how much detail the AI includes</p>
+      </div>
+    </div>
+    <form hx-put="/api/settings/depth" hx-swap="none" hx-on::after-request="showFeedback(this, event)">
+      <div class="form-radio-group">
+        {% for d, desc in [("brief","Short summaries, fewer sources"),("standard","Balanced depth — recommended"),("deep","Full analysis, maximum sources")] %}
+        <label class="form-radio">
+          <input type="radio" name="briefing_depth" value="{{ d }}" {% if briefing_depth == d %}checked{% endif %} />
+          <span class="form-radio-label"><strong>{{ d|capitalize }}</strong> — {{ desc }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <span class="form-feedback" id="depth-feedback"></span>
+      </div>
+    </form>
+  </div>
+
+  <!-- ─── AI Provider ──────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-header">
+      <div>
+        <p class="settings-section-title">AI Provider</p>
+        <p class="settings-section-subtitle">Choose the language model used to write your briefing</p>
+      </div>
+    </div>
+    <form hx-put="/api/settings/llm" hx-swap="none" hx-on::after-request="showFeedback(this, event)">
+      <div class="form-group">
+        <label class="form-label">Provider</label>
+        <div class="form-radio-group">
+          {% for p, label in [("ollama","Ollama (local)"),("openai","OpenAI"),("anthropic","Anthropic"),("gemini","Google Gemini"),("mcp_sampling","MCP Sampling")] %}
+          <label class="form-radio">
+            <input type="radio" name="provider" value="{{ p }}" {% if llm_provider == p %}checked{% endif %} />
+            <span>{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="model-name">Model name</label>
+        <input class="form-input" type="text" id="model-name" name="model_name"
+               value="{{ llm_model_name }}" placeholder="e.g. llama3.2, gpt-4o, claude-sonnet-4-6"
+               style="max-width:360px"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="api-key">API key <span style="font-weight:400;color:var(--text-muted)">(BYOK providers)</span></label>
+        <input class="form-input" type="password" id="api-key" name="api_key"
+               placeholder="{{ api_key_masked or 'Enter key…' }}" autocomplete="off"
+               style="max-width:360px"/>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-secondary" type="button"
+                hx-post="/api/settings/llm/test"
+                hx-target="#llm-test-result"
+                hx-swap="innerHTML">
+          Test connection
+        </button>
+        <span class="form-feedback" id="llm-feedback"></span>
+      </div>
+    </form>
+    <div id="llm-test-result" class="form-feedback" style="margin-top:8px"></div>
+  </div>
+
+  <!-- ─── Audio ────────────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-header">
+      <div>
+        <p class="settings-section-title">Audio</p>
+        <p class="settings-section-subtitle">Text-to-speech engine for briefing audio</p>
+      </div>
+    </div>
+    <form hx-put="/api/settings/tts" hx-swap="none" hx-on::after-request="showFeedback(this, event)">
+      <div class="form-radio-group" style="margin-bottom:20px">
+        <label class="form-radio">
+          <input type="radio" name="engine" value="kokoro"
+                 {% if tts_engine == "kokoro" or not tts_engine %}checked{% endif %} />
+          <span class="form-radio-label"><strong>Kokoro</strong> — default, no GPU required</span>
+        </label>
+        <label class="form-radio">
+          <input type="radio" name="engine" value="orpheus"
+                 {% if tts_engine == "orpheus" %}checked{% endif %}
+                 {% if not cuda_available %}onclick="alert('Orpheus requires a CUDA-compatible GPU')"{% endif %} />
+          <span class="form-radio-label">
+            <strong>Orpheus</strong>
+            {% if not cuda_available %}
+            <span style="font-weight:400;color:var(--warning)"> — no CUDA detected</span>
+            {% endif %}
+          </span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-secondary" type="button"
+                hx-post="/api/settings/tts/test"
+                hx-target="#tts-test-result"
+                hx-swap="innerHTML">
+          Test voice
+        </button>
+      </div>
+    </form>
+    <div id="tts-test-result" class="form-feedback" style="margin-top:8px"></div>
+  </div>
+
+  <!-- ─── Schedule ─────────────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-header">
+      <div>
+        <p class="settings-section-title">Schedule</p>
+        <p class="settings-section-subtitle">When to automatically run briefings</p>
+      </div>
+    </div>
+    <form hx-put="/api/settings/schedule" hx-swap="none" hx-on::after-request="showFeedback(this, event)">
+      <div class="form-group">
+        <label class="form-label" for="cadence">Frequency</label>
+        <select class="form-select" id="cadence" name="cadence" style="max-width:280px">
+          {% for val, label in [("off","Off — manual only"),("daily","Daily"),("every_other_day","Every other day"),("weekly","Weekly")] %}
+          <option value="{{ val }}" {% if cadence == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="schedule-time">Time</label>
+        <select class="form-select" id="schedule-time" name="time" style="max-width:180px">
+          {% set times = ["06:00","06:30","07:00","07:30","08:00","08:30","09:00","09:30","10:00","12:00","18:00","20:00","22:00"] %}
+          {% for t in times %}
+          <option value="{{ t }}" {% if schedule_time == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <label class="form-checkbox" style="margin-bottom:20px">
+        <input type="checkbox" name="daemon_mode" {% if daemon_mode %}checked{% endif %} />
+        <span>Daemon mode — run briefings even when the browser is closed</span>
+      </label>
+      {% if next_run %}
+      <p class="form-hint" style="margin-bottom:16px">Next run: {{ next_run }}</p>
+      {% endif %}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Save schedule</button>
+        <span class="form-feedback" id="schedule-feedback"></span>
+      </div>
+    </form>
+  </div>
+
+  <!-- ─── Troubleshooting ──────────────────────────────────── -->
+  <div class="settings-section">
+    <div class="settings-section-header">
+      <div>
+        <p class="settings-section-title">Troubleshooting</p>
+        <p class="settings-section-subtitle">Raw pipeline log from the last run</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadLog()">Load log</button>
+    </div>
+    <div class="pipeline-log" id="pipeline-log" style="display:none">
+      <p class="log-entry" style="color:var(--text-muted)">Click "Load log" to fetch the latest pipeline output.</p>
+    </div>
+  </div>
+
+</div><!-- .page -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showFeedback(form, event) {
+    const ok = event.detail.successful;
+    const id = form.querySelector('[id$="-feedback"]');
+    if (!id) return;
+    id.textContent = ok ? 'Saved' : 'Error saving';
+    id.className = 'form-feedback ' + (ok ? 'ok' : 'error');
+    setTimeout(() => { id.textContent = ''; id.className = 'form-feedback'; }, 2500);
+  }
+
+  function loadLog() {
+    const el = document.getElementById('pipeline-log');
+    el.style.display = 'block';
+    fetch('/api/briefings')
+      .then(r => r.json())
+      .then(d => {
+        const latest = (d.data || [])[0];
+        if (!latest) { el.innerHTML = '<p class="log-entry" style="color:var(--text-muted)">No runs yet.</p>'; return; }
+        el.innerHTML = '<p class="log-entry">Run ' + latest.run_id + ' — status: ' + latest.status + (latest.error ? '<br><span class="error">' + latest.error + '</span>' : '') + '</p>';
+      })
+      .catch(() => { el.innerHTML = '<p class="log-entry error">Could not load log.</p>'; });
+  }
+</script>
+{% endblock %}

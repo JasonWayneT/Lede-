@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lede — Design Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ─── TOKENS ─────────────────────────────────────────────────── */
+    [data-theme="light"] {
+      --bg-canvas:      #f5f4ed;
+      --bg-surface:     #faf9f5;
+      --bg-overlay:     #ffffff;
+      --bg-subtle:      #eceae0;
+      --text-primary:   #141413;
+      --text-secondary: #5e5d59;
+      --text-muted:     #87867f;
+      --text-disabled:  #b0aea5;
+      --border-subtle:   rgba(0,0,0,0.07);
+      --border-standard: rgba(0,0,0,0.13);
+      --shadow-sm: rgba(0,0,0,0.04) 0px 1px 3px, rgba(0,0,0,0.03) 0px 4px 12px;
+      --shadow-md: rgba(0,0,0,0.04) 0px 4px 18px, rgba(0,0,0,0.027) 0px 2px 7.8px, rgba(0,0,0,0.02) 0px 0.8px 2.9px;
+    }
+    [data-theme="dark"] {
+      --bg-canvas:      #141413;
+      --bg-surface:     #1e1d1b;
+      --bg-overlay:     #2a2926;
+      --bg-subtle:      #242320;
+      --text-primary:   #f5f4ed;
+      --text-secondary: #b0aea5;
+      --text-muted:     #87867f;
+      --text-disabled:  #5e5d59;
+      --border-subtle:   rgba(255,255,255,0.06);
+      --border-standard: rgba(255,255,255,0.10);
+      --shadow-sm: rgba(0,0,0,0.2) 0px 1px 3px, rgba(0,0,0,0.15) 0px 4px 12px;
+      --shadow-md: rgba(0,0,0,0.3) 0px 4px 18px, rgba(0,0,0,0.2) 0px 2px 7.8px, rgba(0,0,0,0.12) 0px 0.8px 2.9px;
+    }
+    :root {
+      --accent:        #c96442;
+      --accent-hover:  #b5572f;
+      --accent-muted:  rgba(201,100,66,0.10);
+      --success:       #2a9d5c;
+      --success-muted: rgba(42,157,92,0.10);
+      --warning:       #c47d0e;
+      --warning-muted: rgba(196,125,14,0.10);
+      --error:         #b53333;
+      --error-muted:   rgba(181,51,51,0.10);
+      --font-editorial: 'Playfair Display', Georgia, serif;
+      --font-ui:        'Inter', system-ui, sans-serif;
+      --font-mono:      'JetBrains Mono', ui-monospace, monospace;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --sidebar-w: 220px;
+    }
+
+    /* ─── RESET ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-ui); font-size: 15px; line-height: 1.5; color: var(--text-primary); background: var(--bg-canvas); min-height: 100vh; }
+
+    /* ─── APP SHELL ──────────────────────────────────────────────── */
+    .app { display: flex; min-height: 100vh; }
+
+    /* ─── SIDEBAR ────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 20;
+    }
+
+    .sidebar-logo {
+      font-family: var(--font-editorial);
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .sidebar-nav { padding: 12px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      background: none;
+      border: none;
+      text-align: left;
+      font-family: var(--font-ui);
+      transition: color 0.15s, background 0.15s;
+      width: 100%;
+    }
+    .sidebar-item:hover { color: var(--text-primary); background: var(--bg-subtle); }
+    .sidebar-item.active { color: var(--text-primary); background: var(--bg-subtle); }
+    .sidebar-item svg { flex-shrink: 0; opacity: 0.6; }
+    .sidebar-item.active svg { opacity: 1; }
+
+    .sidebar-divider { height: 1px; background: var(--border-subtle); margin: 8px 10px; }
+
+    .sidebar-bottom { padding: 12px 10px; border-top: 1px solid var(--border-subtle); }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 7px 10px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: var(--font-ui);
+      width: 100%;
+      transition: color 0.15s, background 0.15s;
+    }
+    .theme-toggle:hover { color: var(--text-primary); background: var(--bg-subtle); }
+
+    /* ─── MAIN CONTENT ───────────────────────────────────────────── */
+    .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+    .main-content { flex: 1; padding-bottom: 80px; } /* room for audio bar */
+
+    /* ─── AUDIO BAR ──────────────────────────────────────────────── */
+    /* Rule 1: Level-1 surface — matches sidebar. Rule 3: border only, no shadow. */
+    .audio-bar {
+      position: fixed;
+      bottom: 0;
+      left: var(--sidebar-w);
+      right: 0;
+      height: 56px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-subtle);
+      display: none;
+      align-items: center;
+      gap: 20px;
+      padding: 0 32px;
+      z-index: 50;
+    }
+    .audio-bar.visible { display: flex; }
+
+    .audio-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 260px;
+    }
+
+    .audio-feed {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .audio-divider { width: 1px; height: 20px; background: var(--border-subtle); flex-shrink: 0; }
+
+    .audio-play-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: white;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .audio-play-btn:hover { background: var(--accent-hover); }
+
+    .audio-scrubber-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .audio-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .audio-scrubber {
+      flex: 1;
+      height: 4px;
+      background: var(--bg-subtle);
+      border-radius: 2px;
+      position: relative;
+      cursor: pointer;
+    }
+    .audio-scrubber:hover .audio-progress::after { transform: translateY(-50%) scale(1.2); }
+
+    .audio-progress {
+      height: 100%;
+      width: 30%;
+      background: var(--accent);
+      border-radius: 2px;
+      position: relative;
+    }
+
+    .audio-progress::after {
+      content: '';
+      position: absolute;
+      right: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: var(--accent);
+      transition: transform 0.15s;
+    }
+
+    .audio-download {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    .audio-download:hover { color: var(--text-primary); }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .page { max-width: 840px; margin: 0 auto; padding: 40px 48px; }
+    .page-wide { max-width: 960px; margin: 0 auto; padding: 40px 48px; }
+
+    /* ─── SHARED COMPONENTS ──────────────────────────────────────── */
+
+    .page-heading {
+      font-family: var(--font-editorial);
+      font-size: 30px;
+      font-weight: 500;
+      line-height: 1.20;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .btn-primary { background: var(--accent); color: #faf9f5; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-standard); }
+    .btn-secondary:hover { background: var(--bg-subtle); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); padding: 7px 10px; }
+    .btn-ghost:hover { color: var(--text-primary); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.3px;
+      padding: 3px 8px; border-radius: var(--radius-sm);
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .badge-running { background: var(--accent-muted); color: var(--accent); }
+    .badge-running .badge-dot { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+    .badge-complete { background: var(--success-muted); color: var(--success); }
+    .badge-complete .badge-dot { background: var(--success); }
+    .badge-failed { background: var(--error-muted); color: var(--error); }
+    .badge-failed .badge-dot { background: var(--error); }
+    .badge-hold { background: var(--warning-muted); color: var(--warning); }
+    .badge-queued { background: var(--bg-subtle); color: var(--text-muted); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:0.45} }
+
+    .divider { height: 1px; background: var(--border-subtle); margin: 32px 0; }
+
+    .form-field { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+    .form-input {
+      font-family: var(--font-ui); font-size: 14px; color: var(--text-primary);
+      background: var(--bg-canvas); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-md); padding: 9px 12px; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s; width: 100%;
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,100,66,0.12); }
+    .form-hint { font-size: 12px; color: var(--text-muted); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCREEN: EMPTY STATE
+    ═══════════════════════════════════════════════════════════════ */
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 80vh;
+      text-align: center;
+      padding: 48px;
+    }
+
+    .empty-icon {
+      width: 56px; height: 56px;
+      background: var(--bg-subtle);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-heading {
+      font-family: var(--font-editorial);
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .empty-body {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 320px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCREEN: DASHBOARD
+    ═══════════════════════════════════════════════════════════════ */
+
+    /* Feed switcher dropdown */
+    .feed-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .feed-dropdown-wrap { position: relative; }
+
+    .feed-dropdown-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-ui);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-standard);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+      min-width: 180px;
+      justify-content: space-between;
+    }
+    .feed-dropdown-btn:hover { background: var(--bg-subtle); }
+
+    .feed-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 220px;
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-standard);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      z-index: 200;
+      overflow: hidden;
+      padding: 4px;
+    }
+    .feed-dropdown-menu.open { display: block; }
+
+    .feed-dropdown-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 9px 12px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.12s, color 0.12s;
+    }
+    .feed-dropdown-item:hover { background: var(--bg-subtle); color: var(--text-primary); }
+    .feed-dropdown-item.active { color: var(--text-primary); }
+    .feed-dropdown-item .item-meta { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+    .feed-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 28px;
+      min-height: 48px;
+    }
+
+    .status-bar-idle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .status-bar-running {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .status-pips { display: flex; gap: 3px; width: 120px; flex-shrink: 0; }
+    .pip { height: 3px; flex: 1; border-radius: 2px; background: var(--bg-subtle); }
+    .pip.done { background: var(--success); }
+    .pip.active { background: var(--accent); animation: shimmer 1.5s ease-in-out infinite; }
+
+    .status-running-text { font-size: 13px; color: var(--text-secondary); }
+    .status-running-text strong { color: var(--text-primary); font-weight: 500; }
+    .status-eta { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+    /* Progress strip (while running) */
+    .progress-strip {
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .progress-pips { display: flex; gap: 4px; flex: 1; }
+    .pip { height: 3px; flex: 1; border-radius: 2px; background: var(--bg-subtle); }
+    .pip.done { background: var(--success); }
+    .pip.active { background: var(--accent); animation: shimmer 1.5s ease-in-out infinite; }
+
+    .progress-label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+    .progress-label strong { color: var(--text-primary); font-weight: 500; }
+
+    /* Briefing reading view on dashboard */
+    .briefing-overline {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .briefing-headline {
+      font-family: var(--font-editorial);
+      font-size: 36px;
+      font-weight: 500;
+      line-height: 1.15;
+      letter-spacing: -0.8px;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .briefing-byline {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 28px;
+    }
+
+    .reading-section-title {
+      font-family: 'Playfair Display', Georgia, serif !important;
+      font-size: 21px;
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: -0.3px;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      margin-top: 32px;
+    }
+
+    .reading-body {
+      font-size: 16px;
+      line-height: 1.72;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+
+    .reading-source {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+      padding-left: 12px;
+      border-left: 2px solid var(--bg-subtle);
+      margin-bottom: 20px;
+    }
+
+    .briefing-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 24px;
+      margin-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCREEN: ARCHIVE
+    ═══════════════════════════════════════════════════════════════ */
+
+    .archive-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .archive-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .archive-card {
+      padding: 24px 28px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: center;
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    .archive-card:hover { box-shadow: var(--shadow-md), 0 0 0 1px var(--border-standard); }
+
+    .ac-date {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.3px;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .ac-title {
+      font-family: var(--font-editorial);
+      font-size: 20px; font-weight: 500; line-height: 1.25;
+      letter-spacing: -0.2px; color: var(--text-primary); margin-bottom: 6px;
+    }
+
+    .ac-summary { font-size: 13px; line-height: 1.55; color: var(--text-secondary); }
+    .ac-meta { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+    .ac-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCREEN: SETTINGS
+    ═══════════════════════════════════════════════════════════════ */
+
+    .settings-layout { display: grid; grid-template-columns: 180px 1fr; gap: 28px; }
+
+    .settings-sidebar { display: flex; flex-direction: column; gap: 2px; }
+
+    .settings-nav-item {
+      font-size: 13px; font-weight: 500; color: var(--text-muted);
+      padding: 7px 10px; border-radius: var(--radius-md);
+      cursor: pointer; background: none; border: none;
+      text-align: left; font-family: var(--font-ui);
+      transition: color 0.15s, background 0.15s; width: 100%;
+    }
+    .settings-nav-item:hover { color: var(--text-primary); background: var(--bg-subtle); }
+    .settings-nav-item.active { color: var(--text-primary); background: var(--bg-subtle); }
+
+    .settings-panel { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .settings-panel-header { padding: 18px 22px; border-bottom: 1px solid var(--border-subtle); }
+    .settings-panel-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .settings-panel-desc { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .settings-panel-body { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+
+    /* Feed manager */
+    .feed-list { display: flex; flex-direction: column; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+
+    .feed-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-canvas);
+      transition: background 0.15s;
+    }
+    .feed-row:last-child { border-bottom: none; }
+    .feed-row:hover { background: var(--bg-subtle); }
+
+    .feed-row-info { flex: 1; }
+    .feed-row-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+    .feed-row-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .feed-row-actions { display: flex; gap: 4px; align-items: center; }
+
+    .icon-btn {
+      width: 28px; height: 28px;
+      border-radius: var(--radius-sm);
+      border: none; background: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); transition: color 0.15s, background 0.15s;
+    }
+    .icon-btn:hover { color: var(--text-primary); background: var(--bg-subtle); }
+    .icon-btn.danger:hover { color: var(--error); background: var(--error-muted); }
+
+    .feed-add-row {
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* Inline add feed form */
+    .add-feed-form {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-top: 4px;
+    }
+    .add-feed-form.open { display: flex; }
+    .add-feed-form-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .form-row { display: flex; gap: 10px; }
+    .add-feed-form-actions { display: flex; gap: 8px; }
+
+    /* Log viewer */
+    .log-viewer { background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+    .log-viewer-header { padding: 9px 14px; border-bottom: 1px solid var(--border-subtle); font-size: 11px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .log-body { padding: 12px 14px; font-family: var(--font-mono); font-size: 12px; line-height: 1.70; max-height: 200px; overflow-y: auto; }
+    .log-line { color: var(--text-secondary); display: flex; gap: 12px; }
+    .log-time { color: var(--text-muted); flex-shrink: 0; }
+    .log-ok { color: var(--success); }
+    .log-err { color: var(--error); }
+    .log-live { color: var(--accent); }
+
+    .s-divider { height: 1px; background: var(--border-subtle); margin: 2px 0; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ─── SIDEBAR ──────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">Lede</div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-item" id="nav-empty" onclick="show('empty')" style="display:none;">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="1.5" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/></svg>
+        Dashboard
+      </button>
+      <button class="sidebar-item active" id="nav-dashboard" onclick="show('dashboard')">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="1.5" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 9.5h6M4.5 7h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Dashboard
+      </button>
+      <button class="sidebar-item" id="nav-archive" onclick="show('archive')">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 4.5h11M2 7.5h11M2 10.5h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Archive
+      </button>
+      <div class="sidebar-divider"></div>
+      <button class="sidebar-item" id="nav-settings" onclick="show('settings')">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 1.5v1.3M7.5 12.2v1.3M1.5 7.5h1.3M12.2 7.5h1.3M3.2 3.2l.9.9M10.9 10.9l.9.9M3.2 11.8l.9-.9M10.9 4.1l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Settings
+      </button>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="theme-toggle" onclick="toggleTheme(this)">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v1.5M6.5 10.5V12M1 6.5h1.5M10.5 6.5H12M2.6 2.6l1 1M9.4 9.4l1 1M2.6 10.4l1-1M9.4 3.6l1-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="6.5" cy="6.5" r="2.2" stroke="currentColor" stroke-width="1.3"/></svg>
+        Dark mode
+      </button>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN ─────────────────────────────────────────────────── -->
+  <main class="main">
+  <div class="main-content">
+
+    <!-- ═══ EMPTY STATE ═══ -->
+    <div class="screen" id="screen-empty">
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 8h18M3 12h12M3 16h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+        <div class="empty-heading">Set up your first feed</div>
+        <p class="empty-body">A feed connects a Gmail label to a schedule. Lede reads it, finds the stories worth knowing, and writes your briefing.</p>
+        <button class="btn btn-primary" onclick="show('settings'); showSettingsPanel('feeds', document.querySelector('[data-panel=feeds]'))">
+          Add your first feed →
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="screen active" id="screen-dashboard">
+      <div class="page">
+
+        <!-- Feed dropdown + run action -->
+        <div class="feed-bar">
+          <div class="feed-dropdown-wrap">
+            <button class="feed-dropdown-btn" onclick="toggleFeedMenu()" id="feed-dropdown-btn">
+              <span id="feed-label">Newsletters</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="feed-dropdown-menu" id="feed-dropdown-menu">
+              <button class="feed-dropdown-item active" onclick="selectFeed('newsletters', 'Newsletters', 'Daily at 7:00 AM', this)">
+                Newsletters
+                <span class="item-meta">Daily · 7:00 AM</span>
+              </button>
+              <button class="feed-dropdown-item" onclick="selectFeed('job-leads', 'Job Leads', 'Wednesdays at 8:00 AM', this)">
+                Job Leads
+                <span class="item-meta">Wednesdays · 8:00 AM</span>
+              </button>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="run-btn" onclick="simulateRun()">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polygon points="2,1.5 9.5,5.5 2,9.5" fill="currentColor"/></svg>
+            Run now
+          </button>
+        </div>
+
+        <!-- Persistent status bar -->
+        <div class="status-bar" id="status-bar">
+          <div class="status-bar-idle" id="status-idle">
+            <span class="badge badge-complete"><span class="badge-dot"></span> Up to date</span>
+            <span>Last run today at 9:31 AM · Next run tomorrow at 7:00 AM</span>
+          </div>
+          <div class="status-bar-running" id="status-running">
+            <span class="badge badge-running"><span class="badge-dot"></span> Running</span>
+            <div class="status-pips">
+              <div class="pip done"></div>
+              <div class="pip done"></div>
+              <div class="pip done"></div>
+              <div class="pip active"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+            </div>
+            <span class="status-running-text"><strong>Grouping stories</strong> — finding what matters</span>
+            <span class="status-eta">~3 min left</span>
+          </div>
+        </div>
+
+        <!-- Briefing reading view -->
+        <div id="briefing-newsletters">
+          <div class="briefing-overline">Newsletters · Friday, June 27</div>
+          <div class="briefing-headline">AI labs race to ship agents as enterprise adoption accelerates</div>
+          <div class="briefing-byline">
+            <span>9 sources</span>
+            <span>·</span>
+            <span>Generated at 09:31</span>
+            <span>·</span>
+            <span>6 min read</span>
+          </div>
+
+          <div class="reading-section-title">The shift is happening faster than expected</div>
+          <p class="reading-body">Seven sources this week converged on the same signal: enterprise teams aren't waiting for agents to be ready. They're deploying now, with guardrails bolted on after the fact. The pattern mirrors early cloud adoption — messy in the middle, obvious in hindsight.</p>
+          <p class="reading-source">a16z Future, Stratechery, The Pragmatic Engineer</p>
+
+          <div class="reading-section-title">What the product teams are actually building</div>
+          <p class="reading-body">The interesting work is now at the task-definition layer — how do you give an agent a goal specific enough to be useful but flexible enough to handle variance? Two PM-focused newsletters covered this from opposite directions this week.</p>
+          <p class="reading-source">Lenny's Newsletter, Product Compass</p>
+
+          <div class="reading-section-title">Who's winning the enterprise deal</div>
+          <p class="reading-body">Microsoft's Copilot rollout data suggests adoption is stalling at the pilot phase. Teams that built internally on raw APIs report higher retention but slower initial velocity. Internal tools win on depth, packaged tools win on breadth.</p>
+          <p class="reading-source">The Information, Ben Thompson, Interconnects</p>
+
+          <div class="briefing-footer">
+            <span style="font-size:13px; color:var(--text-muted);">Synthesized from 9 newsletters</span>
+            <button class="btn btn-ghost btn-sm" onclick="show('archive')">See past briefings →</button>
+          </div>
+        </div>
+
+        <div id="briefing-job-leads" style="display:none;">
+          <div class="briefing-overline">Job Leads · Wednesday, June 25</div>
+          <div class="briefing-headline">Senior PM roles concentrate in AI infra; fintech pulling back</div>
+          <div class="briefing-byline">
+            <span>4 sources</span>
+            <span>·</span>
+            <span>Generated Wed at 08:00</span>
+            <span>·</span>
+            <span>3 min read</span>
+          </div>
+
+          <div class="reading-section-title">Where the roles are</div>
+          <p class="reading-body">AI infrastructure companies — particularly those in the inference and tooling layer — posted 40% more senior PM openings this week than the same period last month. Anthropic, Cohere, and a handful of stealth companies account for most of the volume.</p>
+          <p class="reading-source">Levels.fyi newsletter, Pragmatic Engineer job board</p>
+
+          <div class="reading-section-title">What they're asking for</div>
+          <p class="reading-body">Technical depth is now table stakes. The roles that stand out are asking for experience with LLM evaluation pipelines, not just product sense. If you haven't shipped something that touches model outputs directly, the bar is higher.</p>
+          <p class="reading-source">Lenny's Hiring newsletter, The Pragmatic Engineer</p>
+
+          <div class="briefing-footer">
+            <span style="font-size:13px; color:var(--text-muted);">Synthesized from 4 sources</span>
+            <button class="btn btn-ghost btn-sm" onclick="show('archive')">See past briefings →</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ ARCHIVE ═══ -->
+    <div class="screen" id="screen-archive">
+      <div class="page-wide">
+        <div class="archive-header">
+          <div class="page-heading">Archive</div>
+          <div class="feed-switcher">
+            <button class="feed-tab active">Newsletters</button>
+            <button class="feed-tab">Job Leads</button>
+          </div>
+        </div>
+
+        <div class="archive-list">
+          <div class="archive-card card" onclick="show('dashboard')">
+            <div>
+              <div class="ac-date">Friday, June 27 <span class="badge badge-complete"><span class="badge-dot"></span> Complete</span></div>
+              <div class="ac-title">AI labs race to ship agents as enterprise adoption accelerates</div>
+              <div class="ac-summary">Seven sources converged on the same signal this week. Enterprise teams aren't waiting — they're deploying now.</div>
+              <div class="ac-meta">9 sources · 4 sections · 6 min read</div>
+            </div>
+            <div class="ac-actions">
+              <button class="btn btn-secondary btn-sm">Read</button>
+              <button class="btn btn-ghost btn-sm">Download</button>
+            </div>
+          </div>
+
+          <div class="archive-card card">
+            <div>
+              <div class="ac-date">Thursday, June 26 <span class="badge badge-complete"><span class="badge-dot"></span> Complete</span></div>
+              <div class="ac-title">Cursor hits $1B ARR; developer tools consolidation begins</div>
+              <div class="ac-summary">The IDE wars are over before they started. The real competition is at the agent layer, not the editor.</div>
+              <div class="ac-meta">6 sources · 3 sections · 4 min read</div>
+            </div>
+            <div class="ac-actions">
+              <button class="btn btn-secondary btn-sm">Read</button>
+              <button class="btn btn-ghost btn-sm">Download</button>
+            </div>
+          </div>
+
+          <div class="archive-card card">
+            <div>
+              <div class="ac-date">Wednesday, June 25 <span class="badge badge-failed"><span class="badge-dot"></span> Failed</span></div>
+              <div class="ac-title">Hardware bottlenecks slow inference scaling</div>
+              <div class="ac-summary">H100 availability is rate-limiting deployment more than training compute.</div>
+              <div class="ac-meta">11 sources · run failed at QA gate</div>
+            </div>
+            <div class="ac-actions">
+              <button class="btn btn-primary btn-sm">Retry</button>
+            </div>
+          </div>
+
+          <div class="archive-card card">
+            <div>
+              <div class="ac-date">Tuesday, June 24 <span class="badge badge-complete"><span class="badge-dot"></span> Complete</span></div>
+              <div class="ac-title">Open-source models close the gap on reasoning benchmarks</div>
+              <div class="ac-summary">Llama 3.1 and Mistral Large 2 post competitive scores — but benchmark performance and production usefulness remain different questions.</div>
+              <div class="ac-meta">8 sources · 3 sections · 5 min read</div>
+            </div>
+            <div class="ac-actions">
+              <button class="btn btn-secondary btn-sm">Read</button>
+              <button class="btn btn-ghost btn-sm">Download</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ SETTINGS ═══ -->
+    <div class="screen" id="screen-settings">
+      <div class="page-wide">
+        <div class="page-heading" style="margin-bottom:28px;">Settings</div>
+
+        <div class="settings-layout">
+          <div class="settings-sidebar">
+            <button class="settings-nav-item active" data-panel="feeds" onclick="showSettingsPanel('feeds', this)">Feeds</button>
+            <button class="settings-nav-item" data-panel="ai" onclick="showSettingsPanel('ai', this)">AI Provider</button>
+            <button class="settings-nav-item" data-panel="schedule" onclick="showSettingsPanel('schedule', this)">Schedule</button>
+            <div class="s-divider"></div>
+            <button class="settings-nav-item" data-panel="troubleshoot" onclick="showSettingsPanel('troubleshoot', this)">Troubleshooting</button>
+          </div>
+
+          <!-- FEEDS -->
+          <div class="settings-panel" id="sp-feeds">
+            <div class="settings-panel-header">
+              <div class="settings-panel-title">Feeds</div>
+              <div class="settings-panel-desc">Each feed reads a Gmail label on its own schedule</div>
+            </div>
+            <div class="settings-panel-body">
+
+              <div class="feed-list">
+                <!-- Feed row 1 -->
+                <div class="feed-row">
+                  <div class="feed-row-info">
+                    <div class="feed-row-name">Newsletters</div>
+                    <div class="feed-row-meta">Label: Newsletters · Daily at 7:00 AM ET · 24hr lookback</div>
+                  </div>
+                  <div class="feed-row-actions">
+                    <button class="icon-btn" title="Edit">
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9 2.5l1.5 1.5-7 7H2v-1.5l7-7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button class="icon-btn danger" title="Delete">
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2.5 4h8M5 4V2.5h3V4M5.5 6v4M7.5 6v4M3.5 4l.5 7h5l.5-7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <!-- Feed row 2 -->
+                <div class="feed-row">
+                  <div class="feed-row-info">
+                    <div class="feed-row-name">Job Leads</div>
+                    <div class="feed-row-meta">Label: Job Leads · Wednesdays at 8:00 AM ET · 7-day lookback</div>
+                  </div>
+                  <div class="feed-row-actions">
+                    <button class="icon-btn" title="Edit">
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9 2.5l1.5 1.5-7 7H2v-1.5l7-7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button class="icon-btn danger" title="Delete">
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2.5 4h8M5 4V2.5h3V4M5.5 6v4M7.5 6v4M3.5 4l.5 7h5l.5-7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <!-- Add button -->
+                <div class="feed-add-row">
+                  <button class="btn btn-ghost btn-sm" onclick="toggleAddFeed(this)" style="color:var(--accent); padding-left:0;">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                    Add feed
+                  </button>
+                </div>
+              </div>
+
+              <!-- Inline add form (hidden) -->
+              <div class="add-feed-form" id="add-feed-form">
+                <div class="add-feed-form-title">New feed</div>
+                <div class="form-field">
+                  <label class="form-label">Feed name</label>
+                  <input class="form-input" type="text" placeholder="e.g. Newsletters">
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Gmail label</label>
+                  <input class="form-input" type="text" placeholder="e.g. Newsletters">
+                  <span class="form-hint">Exact label name from your Gmail inbox</span>
+                </div>
+                <div class="form-row">
+                  <div class="form-field" style="flex:1;">
+                    <label class="form-label">Run schedule</label>
+                    <select class="form-input">
+                      <option>Daily</option>
+                      <option>Weekdays only</option>
+                      <option>Mondays</option>
+                      <option>Wednesdays</option>
+                      <option>Fridays</option>
+                      <option>Weekly (Sunday)</option>
+                    </select>
+                  </div>
+                  <div class="form-field" style="flex:1;">
+                    <label class="form-label">Run time</label>
+                    <input class="form-input" type="text" placeholder="7:00 AM">
+                  </div>
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Lookback window</label>
+                  <select class="form-input">
+                    <option>12 hours</option>
+                    <option selected>24 hours</option>
+                    <option>48 hours</option>
+                    <option>7 days</option>
+                    <option>14 days</option>
+                    <option>30 days</option>
+                  </select>
+                  <span class="form-hint">How far back to read unread emails each run</span>
+                </div>
+                <div class="add-feed-form-actions">
+                  <button class="btn btn-primary btn-sm" onclick="toggleAddFeed(document.querySelector('[onclick*=toggleAddFeed]'))">Save feed</button>
+                  <button class="btn btn-ghost btn-sm" onclick="toggleAddFeed(document.querySelector('[onclick*=toggleAddFeed]'))">Cancel</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- AI PROVIDER -->
+          <div class="settings-panel" id="sp-ai" style="display:none;">
+            <div class="settings-panel-header">
+              <div class="settings-panel-title">AI Provider</div>
+              <div class="settings-panel-desc">Choose how Lede generates your briefing</div>
+            </div>
+            <div class="settings-panel-body">
+              <div class="form-field">
+                <label class="form-label">Provider</label>
+                <select class="form-input">
+                  <option>Ollama (local)</option>
+                  <option>OpenAI</option>
+                  <option selected>Anthropic</option>
+                  <option>Gemini</option>
+                  <option>MCP Sampling</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">API Key</label>
+                <input class="form-input" type="password" value="sk-ant-••••••••••••••••">
+                <span class="form-hint">Stored encrypted in your system keyring — never saved to disk</span>
+              </div>
+              <button class="btn btn-primary btn-sm">Save</button>
+            </div>
+          </div>
+
+          <!-- SCHEDULE -->
+          <div class="settings-panel" id="sp-schedule" style="display:none;">
+            <div class="settings-panel-header">
+              <div class="settings-panel-title">Schedule</div>
+              <div class="settings-panel-desc">Global timezone for all feeds</div>
+            </div>
+            <div class="settings-panel-body">
+              <div class="form-field">
+                <label class="form-label">Timezone</label>
+                <select class="form-input">
+                  <option>Eastern Time (ET)</option>
+                  <option>Central Time (CT)</option>
+                  <option>Mountain Time (MT)</option>
+                  <option>Pacific Time (PT)</option>
+                  <option>Alaska Time (AKT)</option>
+                  <option>Hawaii Time (HT)</option>
+                </select>
+                <span class="form-hint">All feed run times use this timezone</span>
+              </div>
+              <button class="btn btn-primary btn-sm">Save</button>
+            </div>
+          </div>
+
+          <!-- TROUBLESHOOTING -->
+          <div class="settings-panel" id="sp-troubleshoot" style="display:none;">
+            <div class="settings-panel-header">
+              <div class="settings-panel-title">Troubleshooting</div>
+              <div class="settings-panel-desc">Raw pipeline output from the last run</div>
+            </div>
+            <div class="settings-panel-body">
+              <p style="font-size:13px; color:var(--text-secondary);">Last run: Newsletters · Friday June 27 at 09:14 · <span style="color:var(--success);">Complete</span></p>
+              <div class="log-viewer">
+                <div class="log-viewer-header">
+                  <span>Pipeline Log</span>
+                  <span class="badge badge-complete"><span class="badge-dot"></span> Complete</span>
+                </div>
+                <div class="log-body">
+                  <div class="log-line"><span class="log-time">09:14:02</span><span class="log-ok">✓ Fetched 47 emails from label "Newsletters"</span></div>
+                  <div class="log-line"><span class="log-time">09:14:03</span><span>Filtered to 31 unread within 24hr window</span></div>
+                  <div class="log-line"><span class="log-time">09:14:10</span><span class="log-ok">✓ Extracted 29 documents</span></div>
+                  <div class="log-line"><span class="log-time">09:15:22</span><span class="log-ok">✓ 29 documents embedded</span></div>
+                  <div class="log-line"><span class="log-time">09:16:45</span><span class="log-ok">✓ Clustered into 6 topic groups</span></div>
+                  <div class="log-line"><span class="log-time">09:18:03</span><span class="log-ok">✓ Briefing drafted — 4 sections</span></div>
+                  <div class="log-line"><span class="log-time">09:22:11</span><span class="log-ok">✓ Audio produced (Kokoro TTS)</span></div>
+                  <div class="log-line"><span class="log-time">09:22:14</span><span class="log-ok">✓ QA passed — briefing ready</span></div>
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm">Copy log</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end .main-content -->
+
+  <!-- ─── AUDIO BAR ──────────────────────────────────────────────── -->
+  <div class="audio-bar visible" id="audio-bar">
+    <div>
+      <div class="audio-title">AI labs race to ship agents as enterprise adoption accelerates</div>
+      <div class="audio-feed">Newsletters · 6 min</div>
+    </div>
+    <div class="audio-divider"></div>
+    <button class="audio-play-btn" id="audio-play-btn" onclick="togglePlay(this)">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polygon points="2.5,1.5 10,6 2.5,10.5" fill="white"/></svg>
+    </button>
+    <div class="audio-scrubber-wrap">
+      <span class="audio-time" id="audio-elapsed">1:48</span>
+      <div class="audio-scrubber" onclick="scrub(event, this)">
+        <div class="audio-progress" id="audio-progress"></div>
+      </div>
+      <span class="audio-time">6:12</span>
+    </div>
+    <button class="audio-download" title="Download audio">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 11.5h11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  </main>
+</div>
+
+<script>
+  function show(screen) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + screen).classList.add('active');
+    document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('nav-' + screen);
+    if (btn) btn.classList.add('active');
+  }
+
+  function showSettingsPanel(id, btn) {
+    document.querySelectorAll('[id^="sp-"]').forEach(p => p.style.display = 'none');
+    document.getElementById('sp-' + id).style.display = 'block';
+    document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+
+  function toggleFeedMenu() {
+    document.getElementById('feed-dropdown-menu').classList.toggle('open');
+  }
+
+  function selectFeed(id, label, schedule, btn) {
+    // Update button label
+    document.getElementById('feed-label').textContent = label;
+    // Close menu
+    document.getElementById('feed-dropdown-menu').classList.remove('open');
+    // Mark active item
+    document.querySelectorAll('.feed-dropdown-item').forEach(i => i.classList.remove('active'));
+    btn.classList.add('active');
+    // Swap briefing content
+    document.getElementById('briefing-newsletters').style.display = id === 'newsletters' ? 'block' : 'none';
+    document.getElementById('briefing-job-leads').style.display = id === 'job-leads' ? 'block' : 'none';
+    // Update status bar idle text
+    const idleText = id === 'newsletters'
+      ? 'Last run today at 9:31 AM · Next run tomorrow at 7:00 AM'
+      : 'Last run Wednesday at 8:00 AM · Next run in 6 days';
+    document.querySelector('#status-idle span:last-child').textContent = idleText;
+  }
+
+  // Close feed menu when clicking outside
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.feed-dropdown-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('feed-dropdown-menu').classList.remove('open');
+    }
+  });
+
+  function toggleAddFeed() {
+    const form = document.getElementById('add-feed-form');
+    form.classList.toggle('open');
+  }
+
+  // Audio bar
+  let playing = false;
+  let progressPct = 30;
+
+  function togglePlay(btn) {
+    playing = !playing;
+    btn.innerHTML = playing
+      ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="1.5" width="3" height="9" rx="1" fill="white"/><rect x="7" y="1.5" width="3" height="9" rx="1" fill="white"/></svg>'
+      : '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polygon points="2.5,1.5 10,6 2.5,10.5" fill="white"/></svg>';
+  }
+
+  function scrub(e, el) {
+    const rect = el.getBoundingClientRect();
+    progressPct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    document.getElementById('audio-progress').style.width = progressPct + '%';
+    const total = 372; // 6:12 in seconds
+    const elapsed = Math.round((progressPct / 100) * total);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    document.getElementById('audio-elapsed').textContent = m + ':' + String(s).padStart(2, '0');
+  }
+
+  function toggleTheme(btn) {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    btn.lastChild.textContent = isDark ? ' Dark mode' : ' Light mode';
+  }
+
+  function simulateRun() {
+    const idle = document.getElementById('status-idle');
+    const running = document.getElementById('status-running');
+    const btn = document.getElementById('run-btn');
+
+    // Show running state
+    idle.style.display = 'none';
+    running.style.display = 'flex';
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+
+    // Cycle through stage labels to feel alive
+    const stages = [
+      'Fetching emails — checking your inbox',
+      'Reading newsletters — extracting what matters',
+      'Analysing topics — finding the signals',
+      'Grouping stories — finding what matters',
+      'Selecting the best — cutting the noise',
+      'Writing your briefing — almost there',
+      'Producing audio — final step',
+    ];
+    let i = 0;
+    const label = document.querySelector('.status-running-text');
+    const interval = setInterval(() => {
+      i = Math.min(i + 1, stages.length - 1);
+      label.innerHTML = '<strong>' + stages[i].split('—')[0].trim() + '</strong> — ' + stages[i].split('—')[1].trim();
+    }, 800);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      running.style.display = 'none';
+      idle.style.display = 'flex';
+      idle.innerHTML = '<span class="badge badge-complete"><span class="badge-dot"></span> Up to date</span><span>Just updated · Next run tomorrow at 7:00 AM</span>';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }, 5000);
+  }
+</script>
+</body>
+</html>

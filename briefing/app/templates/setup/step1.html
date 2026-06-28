@@ -1,0 +1,20 @@
+{% extends "setup/setup_base.html" %}
+{% set step = 1 %}
+{% block content %}
+<article>
+  <header><strong>Step 1: Authorize Gmail</strong></header>
+  <p>Briefing reads your newsletter emails using Gmail's read-only API.
+     Your emails are never stored beyond the current run.</p>
+  {% if oauth_status == "authorized" %}
+  <p style="color:var(--pico-color-green-500,#27ae60)">✓ Gmail authorized
+    {% if authorized_email %}({{ authorized_email }}){% endif %}
+  </p>
+  <a href="/setup/step/2" role="button">Continue →</a>
+  {% else %}
+  <form hx-post="/api/settings/gmail/reauthorize" hx-swap="none"
+        hx-on::after-request="if(event.detail.successful) window.location='/setup/step/2'">
+    <button type="submit">Authorize Gmail</button>
+  </form>
+  {% endif %}
+</article>
+{% endblock %}

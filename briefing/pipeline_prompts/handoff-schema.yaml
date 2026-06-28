@@ -1,0 +1,90 @@
+fields:
+  - name: run_id
+    type: int
+    populated_by: orchestrator
+    consumed_by: [all stages]
+    description: Database primary key for the Run record.
+
+  - name: emails
+    type: list[GmailEmail]
+    populated_by: ingest
+    consumed_by: [extract]
+    description: Raw email objects fetched from Gmail.
+
+  - name: extracted_texts
+    type: list[dict]
+    populated_by: extract
+    consumed_by: [embed, cluster]
+    description: Cleaned text entries with email_id, text, title, sender_name, date.
+
+  - name: embeddings
+    type: list[list[float]]
+    populated_by: embed
+    consumed_by: [cluster]
+    description: One float vector per extracted_text entry, same order.
+
+  - name: clusters
+    type: list[list[dict]]
+    populated_by: cluster
+    consumed_by: [select]
+    description: Groups of extracted_text entries sharing the same topic.
+
+  - name: selected_clusters
+    type: list[dict]
+    populated_by: select
+    consumed_by: [frame]
+    description: Each cluster annotated with section_name.
+
+  - name: framed_stories
+    type: list[dict]
+    populated_by: frame
+    consumed_by: [draft]
+    description: Each cluster with depth_tier, headline, and context fields.
+
+  - name: drafted_stories
+    type: list[dict]
+    populated_by: draft
+    consumed_by: [assemble]
+    description: Each story with final broadcast prose body.
+
+  - name: assembled_markdown
+    type: str
+    populated_by: assemble
+    consumed_by: [tts_prep, qa_gate]
+    description: Complete briefing document in markdown format.
+
+  - name: tts_script
+    type: str
+    populated_by: tts_prep
+    consumed_by: [tts service]
+    description: Spoken-word version of the briefing with markdown stripped.
+
+  - name: pronunciation_guide
+    type: dict[str, str]
+    populated_by: tts_prep
+    consumed_by: [tts service]
+    description: Word-to-pronunciation mappings for proper nouns.
+
+  - name: qa_passed
+    type: bool
+    populated_by: qa_gate
+    consumed_by: [orchestrator]
+    description: True when all QA checks pass.
+
+  - name: errors
+    type: list[str]
+    populated_by: qa_gate, orchestrator
+    consumed_by: [orchestrator, api]
+    description: Accumulated non-fatal error messages.
+
+  - name: early_halt
+    type: bool
+    populated_by: ingest
+    consumed_by: [orchestrator]
+    description: True when ingest finds no new emails; orchestrator halts cleanly.
+
+  - name: halt_reason
+    type: str
+    populated_by: ingest
+    consumed_by: [orchestrator]
+    description: Human-readable reason for early_halt (e.g. "no_new_emails").

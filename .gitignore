@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Runtime data
+briefing/data/
+!briefing/data/**/.gitkeep
+*.db
+*.log
+
+# Secrets
+.env
+credentials.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tooling
+.pytest_cache/
+*.egg-info/
+dist/
+build/

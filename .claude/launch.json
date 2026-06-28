@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "design-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3456", "docs/spec/04-design-specs"],
+      "port": 3456
+    }
+  ]
+}

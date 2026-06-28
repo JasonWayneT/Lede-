@@ -1,0 +1,28 @@
+<div class="reading-view">
+  <p class="briefing-overline">{{ feed_name|upper }} · {{ briefing.date_display|upper }}</p>
+  <h1 class="briefing-title">{{ briefing.title }}</h1>
+  <div class="briefing-byline">
+    <span>{{ briefing.source_count }} source{% if briefing.source_count != 1 %}s{% endif %}</span>
+    <span class="byline-dot">·</span>
+    <span>Generated {{ briefing.date.strftime('%H:%M') if briefing.date else '' }}</span>
+    <span class="byline-dot">·</span>
+    <span>{{ briefing.read_minutes }} min read</span>
+  </div>
+
+  {% for section in briefing.sections %}
+  <div class="reading-section">
+    <h2 class="reading-section-title">{{ section.title }}</h2>
+    {% for para in section.paragraphs %}
+    <p class="reading-body">{{ para }}</p>
+    {% endfor %}
+    {% if section.source %}
+    <p class="reading-source">{{ section.source }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="briefing-footer">
+    <span class="briefing-footer-meta">Synthesised from {{ briefing.source_count }} newsletter{% if briefing.source_count != 1 %}s{% endif %}</span>
+    <a href="/archive" class="briefing-footer-link">See past briefings →</a>
+  </div>
+</div>

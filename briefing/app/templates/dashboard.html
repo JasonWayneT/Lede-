@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Lede — Dashboard{% endblock %}
+{% block main_class %}{% if briefing and briefing.audio_path %}has-audio{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page" id="dashboard-page">
+
+  <!-- Feed bar -->
+  <div class="feed-bar">
+    <div class="feed-dropdown-wrap">
+      <button class="feed-dropdown-btn" onclick="toggleFeedMenu()" id="feed-dropdown-btn">
+        <span id="feed-label">{{ feed_name }}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="feed-dropdown-menu" id="feed-dropdown-menu">
+        <button class="feed-dropdown-item active">
+          {{ feed_name }}
+          <span class="item-meta">
+            {% if cadence and cadence != 'off' %}{{ cadence|replace('_',' ')|title }} · {{ schedule_time }}{% else %}Manual{% endif %}
+          </span>
+        </button>
+      </div>
+    </div>
+    <div class="feed-actions">
+      <button class="btn btn-primary" id="run-btn"
+              hx-post="/api/briefings"
+              hx-trigger="click"
+              hx-target="#run-response"
+              hx-swap="innerHTML"
+              {% if run_active %}disabled{% endif %}
+              onclick="onRunClick(this)">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M3 2l7 4-7 4V2z" fill="currentColor"/>
+        </svg>
+        {% if run_active %}Running…{% else %}Run now{% endif %}
+      </button>
+    </div>
+  </div>
+  <div id="run-response" style="display:none"></div>
+
+  <!-- Status bar -->
+  <div class="status-bar" id="status-bar">
+    <div class="status-bar-idle" id="status-idle">
+      {% if briefing %}
+        <span class="badge badge-complete"><span class="badge-dot"></span> Up to date</span>
+        <span>Last run {{ briefing.date_display }}
+          {% if cadence and cadence != 'off' %} · Next run scheduled {{ schedule_time }}{% endif %}
+        </span>
+      {% else %}
+        <span class="badge badge-queued">No runs yet</span>
+        <span>Run your first briefing to get started</span>
+      {% endif %}
+    </div>
+    <div class="status-bar-running" id="status-running">
+      <span class="badge badge-running"><span class="badge-dot"></span> Running</span>
+      <div class="status-pips" id="status-pips">
+        {% for _ in range(10) %}<span class="pip" id="pip-{{ loop.index0 }}"></span>{% endfor %}
+      </div>
+      <span class="stage-label" id="stage-label">Starting…</span>
+      <span class="stage-eta" id="stage-eta"></span>
+    </div>
+  </div>
+
+  <!-- Briefing content -->
+  <div id="briefing-area">
+    {% if briefing and briefing.sections %}
+      {% include "partials/briefing_reading_view.html" %}
+    {% elif briefing %}
+      <!-- Briefing ran but couldn't parse sections — show a basic view -->
+      <div class="reading-view">
+        <p class="briefing-overline">{{ feed_name|upper }} · {{ briefing.date_display|upper }}</p>
+        <h1 class="briefing-title">{{ briefing.title }}</h1>
+        <div class="briefing-byline">
+          <span>{{ briefing.source_count }} sources</span>
+          <span class="byline-dot">·</span>
+          <span>{{ briefing.read_minutes }} min read</span>
+        </div>
+        <p style="color:var(--text-muted);font-size:14px;">Open the archive to download the full briefing.</p>
+      </div>
+    {% else %}
+      <!-- Empty state -->
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect x="8" y="8" width="32" height="32" rx="6" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M16 18h16M16 24h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p class="empty-title">No briefings yet</p>
+        <p class="empty-body">Hit "Run now" to pull your first briefing from {{ feed_name }}.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div><!-- .page -->
+{% endblock %}
+
+
+{% block audio_bar %}
+{% if briefing and briefing.audio_path %}
+<div class="audio-bar" id="audio-bar">
+  <div class="audio-info">
+    <div class="audio-title">{{ briefing.title }}</div>
+    <div class="audio-feed">{{ feed_name }} · {{ briefing.read_minutes }} min</div>
+  </div>
+  <button class="audio-play-btn" id="audio-play-btn" onclick="toggleAudio()">
+    <svg id="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M4 2.5l8 4.5-8 4.5V2.5z" fill="white"/>
+    </svg>
+    <svg id="pause-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:none">
+      <rect x="3" y="2" width="3" height="10" rx="1" fill="white"/>
+      <rect x="8" y="2" width="3" height="10" rx="1" fill="white"/>
+    </svg>
+  </button>
+  <div class="audio-scrubber" id="audio-scrubber" onclick="seekAudio(event)">
+    <div class="audio-progress" id="audio-progress"></div>
+  </div>
+  <span class="audio-time" id="audio-time">0:00 · {{ briefing.read_minutes }}:00</span>
+  <a class="audio-download" href="/api/briefings/{{ briefing.run_id }}/download/audio" title="Download audio">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 2v8M5 7l3 3 3-3M3 13h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </a>
+  <audio id="briefing-audio" src="/api/briefings/{{ briefing.run_id }}/download/audio" preload="metadata"></audio>
+</div>
+{% endif %}
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+  // Stage label mapping
+  const STAGE_LABELS = {
+    ingest:   'Fetching your newsletters…',
+    extract:  'Reading email content…',
+    embed:    'Understanding topics…',
+    cluster:  'Grouping related stories…',
+    select:   'Selecting top stories…',
+    frame:    'Deciding depth…',
+    draft:    'Writing your briefing…',
+    tts_prep: 'Preparing audio script…',
+    assemble: 'Assembling your briefing…',
+    qa_gate:  'Checking quality…',
+  };
+  const STAGE_ORDER = Object.keys(STAGE_LABELS);
+
+  // Feed dropdown
+  function toggleFeedMenu() {
+    document.getElementById('feed-dropdown-menu').classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.feed-dropdown-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('feed-dropdown-menu').classList.remove('open');
+    }
+  });
+
+  // Run button
+  function onRunClick(btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg> Running…';
+  }
+
+  // Handle HTMX response — start SSE
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.elt.id !== 'run-btn') return;
+    try {
+      const data = JSON.parse(evt.detail.xhr.responseText);
+      if (data.run_id) startSSE(data.run_id);
+    } catch(e) {}
+  });
+
+  function startSSE(runId) {
+    // Switch status bar to running mode
+    document.getElementById('status-idle').style.display = 'none';
+    const running = document.getElementById('status-running');
+    running.style.display = 'flex';
+
+    let stageIndex = -1;
+    const es = new EventSource('/api/stream/' + runId);
+
+    es.addEventListener('log', function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        const stageName = data.stage || '';
+        const idx = STAGE_ORDER.indexOf(stageName);
+        if (idx !== -1 && idx > stageIndex) {
+          stageIndex = idx;
+          // Update pips
+          for (let i = 0; i < 10; i++) {
+            const pip = document.getElementById('pip-' + i);
+            if (!pip) continue;
+            if (i < idx)       { pip.className = 'pip done'; }
+            else if (i === idx) { pip.className = 'pip active'; }
+            else               { pip.className = 'pip'; }
+          }
+          // Update label
+          document.getElementById('stage-label').textContent = STAGE_LABELS[stageName] || stageName;
+        }
+      } catch(e) {}
+    });
+
+    es.addEventListener('complete', function(e) {
+      es.close();
+      // All pips done
+      for (let i = 0; i < 10; i++) {
+        const pip = document.getElementById('pip-' + i);
+        if (pip) pip.className = 'pip done';
+      }
+      document.getElementById('stage-label').textContent = 'Complete — reloading…';
+      // Reload the page to show new briefing
+      setTimeout(() => window.location.reload(), 1200);
+    });
+
+    es.addEventListener('error', function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        document.getElementById('stage-label').textContent = 'Error: ' + (data.message || 'something went wrong');
+        document.getElementById('stage-label').style.color = 'var(--error)';
+      } catch(ex) {}
+      es.close();
+      document.getElementById('run-btn').disabled = false;
+      document.getElementById('run-btn').innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg> Run now';
+    });
+  }
+
+  // Audio player
+  {% if briefing and briefing.audio_path %}
+  const audio = document.getElementById('briefing-audio');
+  let playing = false;
+  function toggleAudio() {
+    if (playing) { audio.pause(); setPlayIcon(false); }
+    else         { audio.play(); setPlayIcon(true); }
+    playing = !playing;
+  }
+  function setPlayIcon(isPlaying) {
+    document.getElementById('play-icon').style.display  = isPlaying ? 'none'  : 'block';
+    document.getElementById('pause-icon').style.display = isPlaying ? 'block' : 'none';
+  }
+  audio.addEventListener('timeupdate', function() {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    document.getElementById('audio-progress').style.width = pct + '%';
+    document.getElementById('audio-time').textContent = fmtTime(audio.currentTime) + ' · ' + fmtTime(audio.duration);
+  });
+  audio.addEventListener('ended', function() { playing = false; setPlayIcon(false); });
+  function seekAudio(e) {
+    if (!audio.duration) return;
+    const rect = document.getElementById('audio-scrubber').getBoundingClientRect();
+    audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+  }
+  function fmtTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+  {% endif %}
+
+  // If run is already active on page load, start SSE immediately
+  {% if run_active %}
+  (async function() {
+    try {
+      const r = await fetch('/api/briefings');
+      const d = await r.json();
+      const active = (d.data || []).find(b => b.status === 'running');
+      if (active) startSSE(active.run_id);
+    } catch(e) {}
+  })();
+  {% endif %}
+</script>
+{% endblock %}

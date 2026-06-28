@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Briefing — History{% endblock %}
+
+{% block content %}
+<h1>History</h1>
+
+{% if briefings %}
+{% for b in briefings %}
+<article>
+  <header>
+    <strong>{{ b.date[:10] if b.date else "Unknown date" }}</strong>
+    &nbsp;
+    {% if b.status == "complete" %}<mark style="background:var(--pico-color-green-500,#27ae60)">Complete</mark>
+    {% elif b.status == "hold" %}<mark style="background:var(--pico-color-red-500,#e74c3c)">Needs Review</mark>
+    {% elif b.status == "running" %}<mark style="background:var(--pico-color-blue-500,#3498db)">Running</mark>
+    {% else %}<mark>{{ b.status }}</mark>
+    {% endif %}
+  </header>
+
+  {% if b.error %}
+  <p><small>{{ b.error }}</small></p>
+  {% endif %}
+
+  <footer>
+    {% if b.markdown_path %}
+    <a href="/api/briefings/{{ b.run_id }}/download/markdown" role="button" class="outline">Download Markdown</a>
+    {% endif %}
+    {% if b.audio_path %}
+    <a href="/api/briefings/{{ b.run_id }}/download/audio" role="button" class="outline">Download Audio</a>
+    {% else %}
+    <button disabled title="Audio not available for this run">Download Audio</button>
+    {% endif %}
+    {% if b.status == "hold" %}
+    <button hx-post="/api/briefings/{{ b.run_id }}/retry" hx-confirm="Retry this run from the failed stage?">Retry</button>
+    {% endif %}
+  </footer>
+</article>
+{% endfor %}
+{% else %}
+<p>No briefings yet. <a href="/">Run one from the dashboard.</a></p>
+{% endif %}
+{% endblock %}
