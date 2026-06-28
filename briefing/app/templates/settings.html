@@ -170,9 +170,11 @@
           {% endfor %}
         </select>
       </div>
+      <input type="hidden" name="day_of_week" value="{{ schedule_day_of_week or 'mon' }}" id="day-of-week-hidden" />
       <div class="form-group" id="day-picker" style="display:{{ 'block' if cadence == 'weekly' else 'none' }}">
         <label class="form-label" for="day-of-week">Day</label>
-        <select class="form-select" id="day-of-week" name="day_of_week" style="max-width:180px">
+        <select class="form-select" id="day-of-week" style="max-width:180px"
+                onchange="document.getElementById('day-of-week-hidden').value = this.value">
           {% for val, label in [("mon","Monday"),("tue","Tuesday"),("wed","Wednesday"),("thu","Thursday"),("fri","Friday"),("sat","Saturday"),("sun","Sunday")] %}
           <option value="{{ val }}" {% if schedule_day_of_week == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
