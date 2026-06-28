@@ -1,14 +1,10 @@
 {% extends "setup/setup_base.html" %}
 {% set step = 2 %}
 {% block content %}
-<article>
-  <header><strong>Step 2: Text-to-Speech (Kokoro)</strong></header>
-  <p>Briefing uses Kokoro to generate an audio version of your briefing.
-     The model (~300 MB) downloads automatically on first use.</p>
-  <p>You can skip this step and use text-only briefings.</p>
-  <div style="display:flex;gap:1rem">
-    <a href="/setup/step/3" role="button">Continue →</a>
-    <a href="/setup/step/3" role="button" class="outline">Skip for now</a>
-  </div>
-</article>
+<h2 class="setup-title">Text-to-Speech (Kokoro)</h2>
+<p class="setup-body">Lede uses Kokoro to generate an audio version of your briefing. The model (~300 MB) downloads automatically on first use. You can skip this and use text-only briefings.</p>
+<div class="setup-actions">
+  <a href="/setup/step/3" class="btn btn-primary">Continue →</a>
+  <a href="/setup/step/3" class="btn btn-ghost">Skip for now</a>
+</div>
 {% endblock %}

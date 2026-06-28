@@ -1,24 +1,30 @@
 {% extends "setup/setup_base.html" %}
 {% set step = 4 %}
 {% block content %}
-<article>
-  <header><strong>Step 4: Schedule (optional)</strong></header>
-  <p>Choose when Briefing should automatically run. You can change this anytime.</p>
-  <form hx-post="/setup/step/4/complete" hx-swap="none"
-        hx-on::after-request="if(event.detail.successful) window.location='/setup/complete'">
+<h2 class="setup-title">Schedule briefings</h2>
+<p class="setup-body">Choose when Lede should automatically run. You can change this anytime in Settings.</p>
+<form hx-post="/setup/step/4/complete" hx-swap="none"
+      hx-on::after-request="if(event.detail.successful) window.location='/setup/complete'">
+  <div class="form-radio-group" style="margin-bottom: 20px">
     {% for c, label in [("off","Off — I'll trigger manually"),("daily","Daily"),("every_other_day","Every other day"),("weekly","Weekly")] %}
-    <label>
+    <label class="form-radio">
       <input type="radio" name="cadence" value="{{ c }}" {% if c == "daily" %}checked{% endif %} />
-      {{ label }}
+      <span>{{ label }}</span>
     </label>
     {% endfor %}
-    <label>Time
-      <input type="time" name="time" value="07:00" />
-    </label>
-    <div style="display:flex;gap:1rem">
-      <button type="submit">Save &amp; Finish</button>
-      <a href="/setup/complete" role="button" class="outline">Skip for now</a>
-    </div>
-  </form>
-</article>
+  </div>
+  <div class="form-group" style="margin-bottom: 24px">
+    <label class="form-label" for="schedule-time">Time</label>
+    <select class="form-select" id="schedule-time" name="time" style="max-width:180px">
+      {% set times = ["06:00","06:30","07:00","07:30","08:00","08:30","09:00","09:30","10:00","12:00","18:00","20:00","22:00"] %}
+      {% for t in times %}
+      <option value="{{ t }}" {% if t == "07:00" %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="setup-actions">
+    <button class="btn btn-primary" type="submit">Save &amp; Finish</button>
+    <a href="/setup/complete" class="btn btn-ghost">Skip for now</a>
+  </div>
+</form>
 {% endblock %}

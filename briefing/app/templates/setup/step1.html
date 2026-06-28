@@ -1,20 +1,23 @@
 {% extends "setup/setup_base.html" %}
 {% set step = 1 %}
 {% block content %}
-<article>
-  <header><strong>Step 1: Authorize Gmail</strong></header>
-  <p>Briefing reads your newsletter emails using Gmail's read-only API.
-     Your emails are never stored beyond the current run.</p>
-  {% if oauth_status == "authorized" %}
-  <p style="color:var(--pico-color-green-500,#27ae60)">✓ Gmail authorized
-    {% if authorized_email %}({{ authorized_email }}){% endif %}
-  </p>
-  <a href="/setup/step/2" role="button">Continue →</a>
-  {% else %}
-  <form hx-post="/api/settings/gmail/reauthorize" hx-swap="none"
-        hx-on::after-request="if(event.detail.successful) window.location='/setup/step/2'">
-    <button type="submit">Authorize Gmail</button>
-  </form>
-  {% endif %}
-</article>
+<h2 class="setup-title">Authorize Gmail</h2>
+<p class="setup-body">Lede reads your newsletter emails using Gmail's read-only API. Your emails are never stored beyond the current run.</p>
+
+{% if oauth_status == "authorized" %}
+<div class="setup-success">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.3"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  Gmail authorized{% if authorized_email %} as {{ authorized_email }}{% endif %}
+</div>
+<div class="setup-actions">
+  <a href="/setup/step/2" class="btn btn-primary">Continue →</a>
+</div>
+{% else %}
+<form hx-post="/api/settings/gmail/reauthorize" hx-swap="none"
+      hx-on::after-request="if(event.detail.successful) window.location='/setup/step/2'">
+  <div class="setup-actions">
+    <button class="btn btn-primary" type="submit">Authorize Gmail</button>
+  </div>
+</form>
+{% endif %}
 {% endblock %}

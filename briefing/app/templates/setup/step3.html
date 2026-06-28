@@ -1,21 +1,18 @@
 {% extends "setup/setup_base.html" %}
 {% set step = 3 %}
 {% block content %}
-<article>
-  <header><strong>Step 3: Configure Topics (optional)</strong></header>
-  <p>Set your Gmail label and topic sections. You can change these anytime in Settings.</p>
-  <form hx-post="/setup/step/3/complete" hx-swap="none"
-        hx-on::after-request="if(event.detail.successful) window.location='/setup/step/4'">
-    <label>Gmail label
-      <input type="text" name="gmail_label" value="{{ gmail_label }}" />
-    </label>
-    <label>Topic sections (comma-separated)
-      <input type="text" name="sections" value="{{ sections | join(', ') }}" />
-    </label>
-    <div style="display:flex;gap:1rem">
-      <button type="submit">Save &amp; Continue</button>
-      <a href="/setup/step/4" role="button" class="outline">Skip for now</a>
-    </div>
-  </form>
-</article>
+<h2 class="setup-title">Configure your inbox</h2>
+<p class="setup-body">Set the Gmail label Lede should pull newsletters from. You can change this anytime in Settings.</p>
+<form hx-post="/setup/step/3/complete" hx-swap="none"
+      hx-on::after-request="if(event.detail.successful) window.location='/setup/step/4'">
+  <div class="form-group" style="margin-bottom: 24px">
+    <label class="form-label" for="gmail-label">Gmail label</label>
+    <input class="form-input" type="text" id="gmail-label" name="gmail_label"
+           value="{{ gmail_label }}" placeholder="e.g. Newsletters" style="max-width:320px"/>
+  </div>
+  <div class="setup-actions">
+    <button class="btn btn-primary" type="submit">Save &amp; Continue</button>
+    <a href="/setup/step/4" class="btn btn-ghost">Skip for now</a>
+  </div>
+</form>
 {% endblock %}
