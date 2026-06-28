@@ -274,6 +274,7 @@ def _set_model_name(config: AppConfig, name: str) -> None:
 class ScheduleBody(BaseModel):
     cadence: str
     time: str = "07:00"
+    day_of_week: str = "mon"
     daemon_mode: bool = False
 
 
@@ -397,12 +398,13 @@ async def update_schedule(body: ScheduleBody, config: AppConfig = Depends(get_co
     _save_settings(config, {
         "cadence": body.cadence,
         "schedule_time": body.time,
+        "day_of_week": body.day_of_week,
         "daemon_mode": body.daemon_mode,
     })
 
     # Update in-process scheduler immediately
     if sched_mod.scheduler.running:
-        sched_mod.schedule_run(body.cadence, body.time, config)
+        sched_mod.schedule_run(body.cadence, body.time, config, day_of_week=body.day_of_week)
 
     # Start or stop daemon if requested
     if body.daemon_mode:

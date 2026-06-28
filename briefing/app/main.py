@@ -163,7 +163,7 @@ async def history_redirect(request: Request):
 
 
 @app.get("/oauth/callback", response_class=HTMLResponse)
-async def oauth_callback(request: Request, code: str | None = None, error: str | None = None):
+async def oauth_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None):
     from app.services import gmail
 
     if error or not code:
@@ -171,7 +171,7 @@ async def oauth_callback(request: Request, code: str | None = None, error: str |
 
     config = AppConfig()
     try:
-        gmail.exchange_code(code, config)
+        gmail.exchange_code(code, state or "", config)
     except Exception as e:
         return RedirectResponse(f"/setup/step/1?error={str(e)[:80]}")
 
@@ -230,6 +230,7 @@ async def settings_page(request: Request):
         "cuda_available": cuda_available(),
         "cadence": stored.get("cadence", "off"),
         "schedule_time": stored.get("schedule_time", "07:00"),
+        "schedule_day_of_week": stored.get("day_of_week", "mon"),
         "next_run": None,
         "daemon_mode": stored.get("daemon_mode", False),
     })

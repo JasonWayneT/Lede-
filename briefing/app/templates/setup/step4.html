@@ -8,10 +8,19 @@
   <div class="form-radio-group" style="margin-bottom: 20px">
     {% for c, label in [("off","Off — I'll trigger manually"),("daily","Daily"),("every_other_day","Every other day"),("weekly","Weekly")] %}
     <label class="form-radio">
-      <input type="radio" name="cadence" value="{{ c }}" {% if c == "daily" %}checked{% endif %} />
+      <input type="radio" name="cadence" value="{{ c }}" {% if c == "daily" %}checked{% endif %}
+             onchange="toggleDayPicker(this.value)" />
       <span>{{ label }}</span>
     </label>
     {% endfor %}
+  </div>
+  <div class="form-group" id="day-picker" style="display:none; margin-bottom: 20px">
+    <label class="form-label" for="day-of-week">Day</label>
+    <select class="form-select" id="day-of-week" name="day_of_week" style="max-width:180px">
+      {% for val, label in [("mon","Monday"),("tue","Tuesday"),("wed","Wednesday"),("thu","Thursday"),("fri","Friday"),("sat","Saturday"),("sun","Sunday")] %}
+      <option value="{{ val }}">{{ label }}</option>
+      {% endfor %}
+    </select>
   </div>
   <div class="form-group" style="margin-bottom: 24px">
     <label class="form-label" for="schedule-time">Time</label>
@@ -27,4 +36,9 @@
     <a href="/setup/complete" class="btn btn-ghost">Skip for now</a>
   </div>
 </form>
+<script>
+  function toggleDayPicker(cadence) {
+    document.getElementById('day-picker').style.display = cadence === 'weekly' ? 'block' : 'none';
+  }
+</script>
 {% endblock %}

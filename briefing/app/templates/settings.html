@@ -163,9 +163,18 @@
     <form hx-put="/api/settings/schedule" hx-swap="none" hx-on::after-request="showFeedback(this, event)">
       <div class="form-group">
         <label class="form-label" for="cadence">Frequency</label>
-        <select class="form-select" id="cadence" name="cadence" style="max-width:280px">
+        <select class="form-select" id="cadence" name="cadence" style="max-width:280px"
+                onchange="toggleDayPicker(this.value)">
           {% for val, label in [("off","Off — manual only"),("daily","Daily"),("every_other_day","Every other day"),("weekly","Weekly")] %}
           <option value="{{ val }}" {% if cadence == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" id="day-picker" style="display:{{ 'block' if cadence == 'weekly' else 'none' }}">
+        <label class="form-label" for="day-of-week">Day</label>
+        <select class="form-select" id="day-of-week" name="day_of_week" style="max-width:180px">
+          {% for val, label in [("mon","Monday"),("tue","Tuesday"),("wed","Wednesday"),("thu","Thursday"),("fri","Friday"),("sat","Saturday"),("sun","Sunday")] %}
+          <option value="{{ val }}" {% if schedule_day_of_week == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
@@ -211,6 +220,10 @@
 
 {% block scripts %}
 <script>
+  function toggleDayPicker(cadence) {
+    document.getElementById('day-picker').style.display = cadence === 'weekly' ? 'block' : 'none';
+  }
+
   function showFeedback(form, event) {
     const ok = event.detail.successful;
     const id = form.querySelector('[id$="-feedback"]');

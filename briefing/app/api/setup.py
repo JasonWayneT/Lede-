@@ -114,7 +114,8 @@ async def step4_complete(request: Request):
     form = await request.form()
     cadence = form.get("cadence", "off")
     time_val = form.get("time", "07:00")
-    _save_settings(config, {"cadence": cadence, "schedule_time": time_val})
+    day_of_week = form.get("day_of_week", "mon")
+    _save_settings(config, {"cadence": cadence, "schedule_time": time_val, "day_of_week": day_of_week})
     return {"status": "ok"}
 
 

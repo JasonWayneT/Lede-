@@ -32,7 +32,7 @@ scheduler = AsyncIOScheduler()
 # Scheduling
 # ---------------------------------------------------------------------------
 
-def schedule_run(cadence: str, time_str: str, config: AppConfig) -> None:
+def schedule_run(cadence: str, time_str: str, config: AppConfig, day_of_week: str = "mon") -> None:
     if scheduler.get_job(_JOB_ID):
         scheduler.remove_job(_JOB_ID)
 
@@ -50,9 +50,9 @@ def schedule_run(cadence: str, time_str: str, config: AppConfig) -> None:
                           start_date=datetime.now().replace(hour=h, minute=m, second=0),
                           id=_JOB_ID, args=[config], replace_existing=True)
     elif cadence == "weekly":
-        scheduler.add_job(_run_if_idle, "cron", day_of_week="mon", hour=h, minute=m,
+        scheduler.add_job(_run_if_idle, "cron", day_of_week=day_of_week, hour=h, minute=m,
                           id=_JOB_ID, args=[config], replace_existing=True)
-    logger.info("Scheduler: job set — cadence=%s time=%02d:%02d", cadence, h, m)
+    logger.info("Scheduler: job set — cadence=%s time=%02d:%02d dow=%s", cadence, h, m, day_of_week)
 
 
 async def _run_if_idle(config: AppConfig) -> None:
