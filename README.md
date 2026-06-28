@@ -45,22 +45,39 @@ Lede pulls the newsletters you subscribe to from Gmail, synthesizes cross-source
 - A Gmail account with OAuth credentials (see setup wizard)
 - Optional: Ollama for local LLM, or an API key for OpenAI / Anthropic / Gemini
 
+### Gmail OAuth setup (required)
+
+Before running Lede you need a Google Cloud OAuth credential. This takes about 10 minutes.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a project named **Lede**
+2. Search **Gmail API** → Enable it
+3. Left menu → **APIs & Services → OAuth consent screen**
+   - User type: **External**
+   - Fill in app name, your email for support and developer contact
+4. Left menu → **Data Access** → add scope `https://www.googleapis.com/auth/gmail.readonly`
+5. Left menu → **Audience** → add your Gmail address as a test user
+6. Left menu → **Clients** → Create OAuth client → **Desktop app** → Create → Download JSON
+7. Rename the downloaded file to `credentials.json` and place it in `briefing/data/`
+
+> The `data/` folder is gitignored — your credentials will never be committed.
+
 ### Setup
 
 ```bash
-git clone [repo URL]
-cd Lede
+git clone https://github.com/JasonWayneT/Lede-.git
+cd Lede/briefing
 uv sync
-uv run python -m app.main
+uvicorn app.main:app --host 127.0.0.1 --port 8001
 ```
 
 ### First run
 
-```bash
-uv run python -m app.main
-# Opens browser to http://localhost:8000
-# First-run wizard guides you through Gmail auth and settings
-```
+Open `http://localhost:8001` in your browser. The setup wizard will walk you through:
+
+1. **Authorize Gmail** — click the button, sign in with Google, approve `gmail.readonly`. If you see an "unverified app" warning, click **Advanced → Go to Lede (unsafe)** — this is expected for personal OAuth apps in testing mode.
+2. **Text-to-speech** — Kokoro (~300 MB) downloads automatically on first briefing run. Skip if you want text-only.
+3. **Inbox label** — set the Gmail label Lede should pull from (e.g. `Newsletters`)
+4. **Schedule** — choose daily, every other day, weekly, or manual-only
 
 ---
 
