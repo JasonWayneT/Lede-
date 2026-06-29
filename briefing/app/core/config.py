@@ -21,7 +21,7 @@ class AppConfig(BaseSettings):
 
     # LLM provider
     llm_provider: str = "ollama"
-    ollama_model_name: str = "llama3.1:8b-instruct-q5_K_M"
+    ollama_model_name: str = "qwen2.5:7b-instruct-q4_K_M"
     ollama_base_url: str = "http://localhost:11434"
     openai_model_name: str = "gpt-4o-mini"
     anthropic_model_name: str = "claude-haiku-4-5-20251001"
