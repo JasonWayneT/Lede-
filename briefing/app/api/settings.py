@@ -303,22 +303,25 @@ async def get_tts_settings(config: AppConfig = Depends(get_config)):
     }}
 
 
-class TtsBody(BaseModel):
-    engine: str
-
-
 @router.put("/tts")
-async def update_tts(body: TtsBody, config: AppConfig = Depends(get_config)):
-    valid = {"kokoro", "orpheus"}
-    if body.engine not in valid:
-        raise HTTPException(status_code=400, detail=f"Invalid engine. Must be one of: {sorted(valid)}")
-    if body.engine == "orpheus":
+async def update_tts(
+    engine: str = Form("kokoro"),
+    tts_voice: str = Form("af_heart"),
+    config: AppConfig = Depends(get_config),
+):
+    from app.services.tts import VOICES
+    valid_engines = {"kokoro", "orpheus"}
+    if engine not in valid_engines:
+        raise HTTPException(status_code=400, detail=f"Invalid engine. Must be one of: {sorted(valid_engines)}")
+    if engine == "orpheus":
         from app.services.tts import cuda_available
         if not cuda_available():
             raise HTTPException(status_code=400, detail="Orpheus requires a CUDA-compatible GPU")
-    config.tts_engine = body.engine
-    _save_settings(config, {"tts_engine": body.engine})
-    return {"data": {"engine": body.engine}}
+    if tts_voice not in VOICES:
+        tts_voice = "af_heart"
+    config.tts_engine = engine
+    _save_settings(config, {"tts_engine": engine, "tts_voice": tts_voice})
+    return {"data": {"engine": engine, "tts_voice": tts_voice}}
 
 
 @router.post("/tts/test")

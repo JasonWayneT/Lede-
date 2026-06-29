@@ -148,6 +148,30 @@
           </span>
         </label>
       </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label class="form-label" for="tts-voice">Kokoro voice</label>
+        <select class="form-select" id="tts-voice" name="tts_voice" style="max-width:320px">
+          <optgroup label="American Female">
+            <option value="af_heart"   {% if tts_voice == "af_heart"   or not tts_voice %}selected{% endif %}>Heart — warm (default)</option>
+            <option value="af_bella"   {% if tts_voice == "af_bella"   %}selected{% endif %}>Bella — bright</option>
+            <option value="af_nicole"  {% if tts_voice == "af_nicole"  %}selected{% endif %}>Nicole — conversational</option>
+            <option value="af_aoede"   {% if tts_voice == "af_aoede"   %}selected{% endif %}>Aoede</option>
+          </optgroup>
+          <optgroup label="American Male">
+            <option value="am_adam"    {% if tts_voice == "am_adam"    %}selected{% endif %}>Adam</option>
+            <option value="am_michael" {% if tts_voice == "am_michael" %}selected{% endif %}>Michael</option>
+          </optgroup>
+          <optgroup label="British Female">
+            <option value="bf_emma"    {% if tts_voice == "bf_emma"    %}selected{% endif %}>Emma</option>
+            <option value="bf_isabella"{% if tts_voice == "bf_isabella"%}selected{% endif %}>Isabella</option>
+          </optgroup>
+          <optgroup label="British Male">
+            <option value="bm_george"  {% if tts_voice == "bm_george"  %}selected{% endif %}>George</option>
+            <option value="bm_lewis"   {% if tts_voice == "bm_lewis"   %}selected{% endif %}>Lewis</option>
+          </optgroup>
+        </select>
+        <p class="form-hint">British voices use a different accent model — the pipeline reloads on first use</p>
+      </div>
       <div class="form-actions">
         <button class="btn btn-primary" type="submit">Save</button>
         <button class="btn btn-secondary" type="button"
@@ -156,6 +180,7 @@
                 hx-swap="innerHTML">
           Test voice
         </button>
+        <span class="form-feedback" id="tts-feedback"></span>
       </div>
     </form>
     <div id="tts-test-result" class="form-feedback" style="margin-top:8px"></div>

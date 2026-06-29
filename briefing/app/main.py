@@ -228,6 +228,7 @@ async def settings_page(request: Request):
         "llm_model_name": model_map.get(provider, ""),
         "api_key_masked": _mask_key(api_key_raw) if api_key_raw else None,
         "tts_engine": stored.get("tts_engine", config.tts_engine),
+        "tts_voice": stored.get("tts_voice", "af_heart"),
         "cuda_available": cuda_available(),
         "cadence": stored.get("cadence", "off"),
         "schedule_time": stored.get("schedule_time", "07:00"),
