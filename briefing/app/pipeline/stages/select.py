@@ -1,6 +1,6 @@
-"""Select stage — assign each cluster to a section using LLM classification."""
+"""Select stage — assign each cluster a freeform section name using the LLM."""
 
-# Implements FR-004, ARCH-003
+# Implements FR-032 (see CR-007 — supersedes FR-006's fixed-taxonomy design)
 
 from __future__ import annotations
 

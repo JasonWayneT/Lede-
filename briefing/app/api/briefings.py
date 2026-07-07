@@ -37,16 +37,19 @@ async def start_briefing(
     body: RunRequest = RunRequest(),
     config: AppConfig = Depends(get_config),
 ):
-    async with get_session() as session:
-        result = await session.execute(
-            select(Run).where(Run.status == "running")
-        )
-        active = result.scalars().first()
-        if active:
-            raise HTTPException(status_code=409, detail="A run is already in progress")
-
+    # BUG-015 (CR-013): the active-run check and the new Run insert used to happen in two
+    # separate transactions, leaving a check-then-act race window; the check also only looked
+    # for "running", missing the "pending" window before the background task flips status.
+    # Doing both in one transaction lets SQLite's single-writer serialization close the race.
     async with get_session() as session:
         async with session.begin():
+            result = await session.execute(
+                select(Run).where(Run.status.in_(["running", "pending"]))
+            )
+            active = result.scalars().first()
+            if active:
+                raise HTTPException(status_code=409, detail="A run is already in progress")
+
             run = Run(
                 status="pending",
                 depth=body.depth or config.briefing_depth,
@@ -179,6 +182,26 @@ async def retry_run(
                     session.add(run)
                     session.add(_BO(run_id=run_id, markdown_path=packet_result.markdown_path, audio_path=audio_path))
 
+                    # BUG-018 (CR-013): this resume path never recorded ProcessedEmail rows,
+                    # unlike run_pipeline's finalize block -- a successfully retried run would
+                    # let Gmail re-fetch and reprocess the same emails on the next run, silently
+                    # breaking FR-003's no-duplicate-processing guarantee.
+                    email_ids = [
+                        getattr(e, "email_id", None) or e.get("email_id", "") if isinstance(e, dict) else getattr(e, "email_id", "")
+                        for e in packet_result.emails
+                    ]
+                    email_ids = [e for e in email_ids if e]
+                    already_processed: set[str] = set()
+                    if email_ids:
+                        from sqlalchemy import select as _select
+                        existing = await session.execute(
+                            _select(_PE.email_id).where(_PE.email_id.in_(email_ids))
+                        )
+                        already_processed = {row[0] for row in existing.all()}
+                    for email_id in email_ids:
+                        if email_id not in already_processed:
+                            session.add(_PE(email_id=email_id, run_id=run_id))
+
                 orchestrator._emit(run_id, "complete", {"run_id": run_id, "markdown_path": packet_result.markdown_path, "audio_path": audio_path, "ts": orchestrator._ts()})
             except orchestrator._HoldException:
                 pass
@@ -205,6 +228,9 @@ async def dismiss_error(
             session.add(run)
     return HTMLResponse(content="")
 
+_MAX_ON_DEMAND_URLS = 10  # BUG-017 (CR-013): cap prevents an unbounded, sequential, per-URL-timeout request
+
+
 class OnDemandRequest(BaseModel):
     urls: list[str]
     source_type: str = "article"  # "youtube" | "article"
@@ -219,11 +245,21 @@ async def start_on_demand(
     """Trigger an on-demand briefing from YouTube or article URLs (FR-26/FR-27)."""
     if not body.urls:
         raise HTTPException(status_code=422, detail="At least one URL is required")
+    if len(body.urls) > _MAX_ON_DEMAND_URLS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Too many URLs — at most {_MAX_ON_DEMAND_URLS} per on-demand request",
+        )
     if body.source_type not in ("youtube", "article"):
         raise HTTPException(status_code=422, detail="source_type must be 'youtube' or 'article'")
 
+    # BUG-015 (CR-013): an early check here is just an optimization to skip wasted extraction
+    # work -- the check that actually prevents a double-start is the one re-run inside the same
+    # transaction as the insert, below, right before extraction time would otherwise leave a race
+    # window open. Checking "pending" as well as "running" closes the window before the
+    # background task flips a just-created run's status.
     async with get_session() as session:
-        result = await session.execute(select(Run).where(Run.status == "running"))
+        result = await session.execute(select(Run).where(Run.status.in_(["running", "pending"])))
         if result.scalars().first():
             raise HTTPException(status_code=409, detail="A run is already in progress")
 
@@ -240,6 +276,10 @@ async def start_on_demand(
 
     async with get_session() as session:
         async with session.begin():
+            result = await session.execute(select(Run).where(Run.status.in_(["running", "pending"])))
+            if result.scalars().first():
+                raise HTTPException(status_code=409, detail="A run is already in progress")
+
             run = Run(
                 status="pending",
                 depth=config.briefing_depth,
@@ -264,5 +304,26 @@ async def start_on_demand(
 
 
 @router.get("/briefings/missed")
-async def missed_briefing():
-    return {"missed_at": None}
+async def missed_briefing(config: AppConfig = Depends(get_config)):
+    """Report a missed scheduled run so the dashboard can show a banner (FR-026/9-3, BUG-011).
+
+    Derived live from the same check used to trigger the startup retry (`check_missed_runs`),
+    rather than cached process state -- this stays correct whether the retry was triggered by the
+    web server's own lifespan startup or by the separate daemon subprocess.
+    """
+    from app.core.scheduler import check_missed_runs
+
+    missed_at = await check_missed_runs(config)
+    if not missed_at:
+        return {"missed_at": None, "retrying": False}
+
+    async with get_session() as session:
+        result = await session.execute(
+            select(Run)
+            .where(Run.status.in_(["running", "pending"]))
+            .order_by(Run.created_at.desc())
+            .limit(1)
+        )
+        active_run = result.scalar_one_or_none()
+
+    return {"missed_at": missed_at.isoformat(), "retrying": active_run is not None}

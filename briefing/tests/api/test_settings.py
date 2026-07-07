@@ -64,7 +64,8 @@ async def test_get_depth(async_client):
 
 @pytest.mark.asyncio
 async def test_put_depth_invalid(async_client):
-    resp = await async_client.put("/api/settings/depth", json={"briefing_depth": "ultra"})
+    # BUG-009 (CR-010): route takes a Form body (matches settings.html's hx-put form), not JSON.
+    resp = await async_client.put("/api/settings/depth", data={"briefing_depth": "ultra"})
     assert resp.status_code == 400
 
 
@@ -72,9 +73,17 @@ async def test_put_depth_invalid(async_client):
 async def test_put_depth_valid(async_client):
     import app.api.settings as s
     with patch.object(s, "_save_settings"):
-        resp = await async_client.put("/api/settings/depth", json={"briefing_depth": "deep"})
+        resp = await async_client.put("/api/settings/depth", data={"briefing_depth": "deep"})
     assert resp.status_code == 200
     assert resp.json()["data"]["briefing_depth"] == "deep"
+
+
+@pytest.mark.asyncio
+async def test_put_depth_json_body_rejected(async_client):
+    # BUG-009 regression: a JSON body (the old, broken submission shape) must not silently
+    # succeed — it should 422 since the route now requires form-encoded fields.
+    resp = await async_client.put("/api/settings/depth", json={"briefing_depth": "deep"})
+    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -174,6 +183,7 @@ async def test_put_tts_invalid_engine_returns_400(async_client):
 
 @pytest.mark.asyncio
 async def test_put_llm_stores_api_key(async_client):
+    # BUG-009 (CR-010): route takes a Form body (matches settings.html's hx-put form), not JSON.
     import app.api.settings as s
     from app.core import credentials
 
@@ -187,9 +197,15 @@ async def test_put_llm_stores_api_key(async_client):
         ):
             resp = await async_client.put(
                 "/api/settings/llm",
-                json={"provider": "openai", "api_key": "sk-testkey123"},
+                data={"provider": "openai", "api_key": "sk-testkey123"},
             )
         assert resp.status_code == 200
         mock_set.assert_called_once_with(credentials.OPENAI_KEY, "sk-testkey123")
     finally:
         cfg.llm_provider = original
+
+
+@pytest.mark.asyncio
+async def test_put_llm_invalid_provider_returns_400(async_client):
+    resp = await async_client.put("/api/settings/llm", data={"provider": "not-a-provider"})
+    assert resp.status_code == 400

@@ -37,6 +37,31 @@ async def test_synthesize_raises_stage_error_on_failure(tmp_path):
     assert exc_info.value.retryable is False
 
 
+# ── R12: empty/whitespace-only script degrades to a non-fatal StageError ───
+
+def test_render_samples_raises_runtime_error_on_empty_pipeline_output():
+    with (
+        patch("app.services.tts._load_voice", return_value="af_heart"),
+        patch("app.services.tts._get_pipeline", return_value=lambda *a, **kw: iter([])),
+    ):
+        with pytest.raises(RuntimeError, match="no audio samples"):
+            tts._render_samples_sync("   ")
+
+
+@pytest.mark.asyncio
+async def test_synthesize_whitespace_only_script_is_non_fatal_stage_error(tmp_path):
+    output = tmp_path / "empty.mp3"
+    with patch(
+        "app.services.tts._render_samples_sync",
+        side_effect=RuntimeError("Kokoro returned no audio samples"),
+    ):
+        with pytest.raises(StageError) as exc_info:
+            await tts.synthesize("   ", output)
+
+    assert exc_info.value.retryable is False
+    assert not output.exists()
+
+
 @pytest.mark.asyncio
 async def test_synthesize_applies_pronunciation_guide(tmp_path):
     output = tmp_path / "test.mp3"

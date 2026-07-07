@@ -107,3 +107,26 @@ def test_load_music_assets_reads_real_registry():
     ids = {a["id"] for a in assets}
     assert "modern_tech_digest_01" in ids
     assert "premium_newsletter_intro_01" in ids
+
+
+# ── BUG-013: malformed music_assets.json degrades to no-music, not a crash ──
+
+def test_load_music_assets_returns_empty_on_malformed_json(monkeypatch, tmp_path):
+    bad_path = tmp_path / "music_assets.json"
+    bad_path.write_text("{not valid json")
+    monkeypatch.setattr(music, "MUSIC_ASSETS_PATH", bad_path)
+    assert music.load_music_assets() == []
+
+
+def test_load_music_assets_returns_empty_on_unreadable_file(monkeypatch, tmp_path):
+    import os
+
+    unreadable_path = tmp_path / "unreadable.json"
+    unreadable_path.write_text("[]")
+
+    def _raise_oserror(*args, **kwargs):
+        raise OSError("permission denied")
+
+    monkeypatch.setattr(music, "MUSIC_ASSETS_PATH", unreadable_path)
+    monkeypatch.setattr(type(unreadable_path), "read_text", _raise_oserror)
+    assert music.load_music_assets() == []

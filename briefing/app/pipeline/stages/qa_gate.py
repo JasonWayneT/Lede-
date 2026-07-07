@@ -1,6 +1,6 @@
 """QA gate stage — deterministic pre-delivery validation."""
 
-# Implements FR-010, ARCH-003
+# Implements FR-013 (Check 1 revised per CR-007 — no longer requires per-section coverage)
 
 from __future__ import annotations
 

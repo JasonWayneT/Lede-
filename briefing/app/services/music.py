@@ -39,7 +39,14 @@ def load_music_assets() -> list[dict]:
     if not MUSIC_ASSETS_PATH.exists():
         logger.warning("Music: %s not found; no music will be selected", MUSIC_ASSETS_PATH)
         return []
-    return json.loads(MUSIC_ASSETS_PATH.read_text(encoding="utf-8"))
+    try:
+        return json.loads(MUSIC_ASSETS_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        # BUG-013 (CR-013): this used to raise uncaught, crashing the whole draft/tts_prep stage
+        # over a malformed asset file -- music is a non-essential enhancement, so degrade to
+        # "no music" the same way a missing file already does, rather than failing the run.
+        logger.warning("Music: %s could not be parsed (%s); no music will be selected", MUSIC_ASSETS_PATH, e)
+        return []
 
 
 def select_style(segment_role: str, section_name: str, sensitivity: str) -> str | None:

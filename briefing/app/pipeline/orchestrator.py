@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from types import ModuleType
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import stream as sse
@@ -240,8 +241,24 @@ async def run_pipeline(run_id: int, config: AppConfig) -> None:
                     getattr(e, "email_id", None) or e.get("email_id", "") if isinstance(e, dict) else getattr(e, "email_id", "")
                     for e in packet.emails
                 ]
+                email_ids = [e for e in email_ids if e]
+                # BUG-012 (CR-013): a duplicate email_id (e.g. from a race between overlapping
+                # ingest fetches) would violate ProcessedEmail's unique constraint and roll back
+                # this entire commit -- the whole run would be marked "failed" over one already-
+                # processed email. Skip IDs already recorded instead of letting the insert crash.
+                already_processed: set[str] = set()
+                if email_ids:
+                    existing = await session.execute(
+                        select(ProcessedEmail.email_id).where(ProcessedEmail.email_id.in_(email_ids))
+                    )
+                    already_processed = {row[0] for row in existing.all()}
+                    if already_processed:
+                        logger.warning(
+                            "Run %d: %d email ID(s) already in processed_emails, skipping re-insert: %s",
+                            run_id, len(already_processed), sorted(already_processed),
+                        )
                 for email_id in email_ids:
-                    if email_id:
+                    if email_id not in already_processed:
                         session.add(ProcessedEmail(email_id=email_id, run_id=run_id))
 
             _emit(run_id, "complete", {

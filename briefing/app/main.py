@@ -108,6 +108,15 @@ async def dashboard(request: Request):
         if held:
             hold_run = {"run_id": held.id, "error": held.error}
 
+    # BUG-011 (9-3/AC-1): surface a missed scheduled run on the dashboard instead of retrying
+    # silently in the background with no visible signal to the user.
+    missed_run = None
+    missed_at = await sched_mod.check_missed_runs(config)
+    if missed_at:
+        # %I/%p is portable across platforms; %-I (no leading zero) is not (glibc-only).
+        missed_at_display = missed_at.strftime("%I:%M %p").lstrip("0")
+        missed_run = {"missed_at_display": missed_at_display, "retrying": run_active}
+
     # Load schedule info for status bar
     settings_path = Path(config.data_dir) / "settings.json"
     stored: dict = {}
@@ -124,6 +133,7 @@ async def dashboard(request: Request):
         "active_page": "dashboard",
         "run_active": run_active,
         "hold_run": hold_run,
+        "missed_run": missed_run,
         "feed_name": config.gmail_label or "Inbox",
         "briefing": briefing_data,
         "cadence": stored.get("cadence", "off"),

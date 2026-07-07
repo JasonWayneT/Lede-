@@ -1,6 +1,11 @@
 # Story 6.3: TTS Engine Configuration in Settings
 
-Status: ready-for-dev
+Status: implemented
+
+> **2026-07-06 note:** verified against code during an audit pass (this spec was previously
+> unverified/flagged as an open item). `GET/PUT /api/settings/tts` and `POST
+> /api/settings/tts/test` in `app/api/settings.py` match ACs 1–4 exactly, including the
+> `BUG-002` form-encoding fix already documented in the Dev Notes below.
 
 ## Story
 

@@ -10,6 +10,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > Entries accumulate here during active development. Move them into a versioned release when you ship.
 
+[DRAFT] Production-readiness audit pass: fixes a real security gap in the on-demand link ingest
+feature, a settings-saving bug on two Settings pages, and several places where the app could fail
+silently or lose track of processed emails — plus brings the project's own spec documentation back
+in sync with what the code actually does. Human reviews and finalizes before commit.
+
+### Fixed
+- BUG-008: on-demand article ingest could be tricked into fetching internal/private network addresses (a security hardening fix)
+- BUG-009: Depth and AI Provider settings silently failed to save from the Settings page
+- BUG-010: a corrupted lookback-window setting failed silently instead of logging a warning; a missing Gmail credentials file could crash instead of showing a clear message
+- BUG-011: a missed scheduled run retried silently with no banner telling the user it happened
+- BUG-012: a duplicate processed email could fail an entire briefing run
+- BUG-013: a corrupted music-asset file crashed story writing instead of just skipping music
+- BUG-014: one bad music clip could silence the entire briefing's audio instead of just that story
+- BUG-015: two near-simultaneous run triggers could start two briefings at once
+- BUG-016: Gemini errors were occasionally misclassified due to fragile text matching
+- BUG-017: on-demand link ingest had no limit on how many links could be submitted at once
+- BUG-018: a retried run could forget to mark its emails as processed, causing them to be reprocessed later
+
+### Changed
+- CR-007: documented that story topic sections are intentionally freeform for now (not yet matched to your configured topic list) — revisit once enough briefings exist to define a real topic list
+- CR-008: documented the YouTube/article on-demand ingest feature properly (it worked already; the paperwork didn't exist)
+
+### Developer
+- All fixes above include regression tests; full test suite (287 tests) passes.
+- Known, deliberately-deferred items: a retry-logic code duplication (low risk, one bug from it already fixed) and a rare daemon-process-identity edge case (would require adding a new dependency — flagged for a product decision rather than silently added).
+
+---
+
 [DRAFT] Fixes a bug where local (Ollama) briefings were silently limited to a tiny amount of
 context regardless of the model in use, and replaces the fixed-length source-text truncation in
 the frame/draft stages with content-aware condensation — so briefing stories read as real

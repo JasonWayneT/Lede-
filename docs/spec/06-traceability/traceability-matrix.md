@@ -27,20 +27,37 @@ Use this matrix to prove that each requirement has a spec, task, implementation,
 | `FR-031` | `docs/spec/05-change-requests/CR-006.md` | `docs/spec/03-feature-specs/6-5-audio-mixing.md`, `docs/spec/07-decisions/ADR-005.md` | `AC-080..AC-085` | `TASK-034..TASK-040` | `briefing/app/services/mixing.py`, `briefing/app/services/tts.py`, `briefing/app/services/music.py`, `briefing/app/pipeline/stages/draft.py`, `briefing/app/pipeline/stages/tts_prep.py` | `TEST-017` | verified |
 | `BUG-006` | `docs/spec/09-known-issues/BUG-006.md` | n/a — direct bug fix | `AC-086` | n/a | `briefing/app/main.py`, `briefing/app/templates/dashboard.html` | `TEST-018` | verified |
 | `BUG-007` | `docs/spec/09-known-issues/BUG-007.md` | `docs/spec/03-feature-specs/6-5-audio-mixing.md` | `AC-087..AC-089` | n/a | `briefing/app/services/mixing.py` | `TEST-019` | verified |
+| `FR-032` | `docs/spec/05-change-requests/CR-007.md` | `docs/spec/03-feature-specs/4-6-select-stage.md` | `AC-090` | `TASK-041`, `TASK-043` | `briefing/app/pipeline/stages/select.py` | `tests/pipeline/stages/test_select.py` | verified |
+| `FR-013` (Check 1 revision) | `docs/spec/05-change-requests/CR-007.md` | `docs/spec/03-feature-specs/7-3-qa-gate-stage.md` | `AC-091` | `TASK-042`, `TASK-043` | `briefing/app/pipeline/stages/qa_gate.py` | `tests/pipeline/stages/test_qa_gate.py` | verified |
+| `FR-033` | `docs/spec/05-change-requests/CR-008.md` | `docs/spec/03-feature-specs/13-1-youtube-transcript-ingest.md` | `AC-092..AC-093` | `TASK-044`, `TASK-047` | `briefing/app/services/youtube.py` | `tests/services/test_youtube.py` | verified |
+| `FR-034` | `docs/spec/05-change-requests/CR-008.md` | `docs/spec/03-feature-specs/13-2-article-url-ingest.md` | `AC-094` | `TASK-045`, `TASK-047` | `briefing/app/services/article.py` | `tests/services/test_article.py` | verified |
+| `FR-035` | `docs/spec/05-change-requests/CR-008.md` | `docs/spec/03-feature-specs/13-3-on-demand-ingest-ui-and-api.md` | `AC-095` | `TASK-046`, `TASK-047` | `briefing/app/api/briefings.py`, `briefing/app/pipeline/orchestrator.py` | `tests/services/test_youtube.py`, `test_article.py`, `tests/pipeline/test_ordering.py` | verified |
+| `BUG-008` | `docs/spec/09-known-issues/BUG-008.md` | `docs/spec/05-change-requests/CR-009.md`, `docs/spec/03-feature-specs/13-2-article-url-ingest.md` | `AC-096..AC-097` | `TASK-048`, `TASK-049` | `briefing/app/services/article.py` | `tests/services/test_article.py` | verified |
+| `BUG-009` | `docs/spec/09-known-issues/BUG-009.md` | `docs/spec/05-change-requests/CR-010.md`, `docs/spec/03-feature-specs/8-6-settings-depth-and-llm-provider.md` | `AC-098..AC-099` | `TASK-050`, `TASK-051`, `TASK-052` | `briefing/app/api/settings.py` | `tests/api/test_settings.py` | verified |
+| `BUG-010` | `docs/spec/09-known-issues/BUG-010.md` | `docs/spec/05-change-requests/CR-011.md`, `docs/spec/03-feature-specs/2-1-gmail-oauth-authorization.md`, `2-2-label-based-email-fetch.md` | `AC-100..AC-102` | `TASK-053`, `TASK-054`, `TASK-055` | `briefing/app/services/gmail.py`, `briefing/app/api/settings.py` | `tests/services/test_gmail.py` | verified |
+| `BUG-011` | `docs/spec/09-known-issues/BUG-011.md` | `docs/spec/05-change-requests/CR-012.md`, `docs/spec/03-feature-specs/9-3-missed-run-detection.md` | `AC-103..AC-104` | `TASK-056`, `TASK-057`, `TASK-058` | `briefing/app/api/briefings.py`, `briefing/app/main.py`, `briefing/app/templates/dashboard.html` | `tests/api/test_briefings.py`, `tests/api/test_dashboard.py` | verified |
+| `BUG-012` | `docs/spec/09-known-issues/BUG-012.md` | `docs/spec/05-change-requests/CR-013.md` | n/a | `TASK-059` | `briefing/app/pipeline/orchestrator.py` | pre-existing `tests/pipeline/test_processed_log.py` | verified |
+| `BUG-013` | `docs/spec/09-known-issues/BUG-013.md` | `docs/spec/05-change-requests/CR-013.md` | `AC-105..AC-106` | `TASK-060` | `briefing/app/services/music.py` | `tests/services/test_music.py` | verified |
+| `BUG-014` | `docs/spec/09-known-issues/BUG-014.md` | `docs/spec/05-change-requests/CR-013.md` | `AC-107..AC-108` | `TASK-061` | `briefing/app/services/mixing.py` | `tests/services/test_mixing.py` | verified |
+| `BUG-015` | `docs/spec/09-known-issues/BUG-015.md` | `docs/spec/05-change-requests/CR-013.md` | `AC-109` | `TASK-062` | `briefing/app/api/briefings.py` | `tests/api/test_briefings.py` | verified |
+| `BUG-016` | `docs/spec/09-known-issues/BUG-016.md` | `docs/spec/05-change-requests/CR-013.md` | `AC-110..AC-111` | `TASK-063` | `briefing/app/services/llm.py` | `tests/services/test_llm.py` | verified |
+| `BUG-017` | `docs/spec/09-known-issues/BUG-017.md` | `docs/spec/05-change-requests/CR-013.md` | `AC-112` | `TASK-064` | `briefing/app/api/briefings.py` | `tests/api/test_briefings.py` | verified |
+| `BUG-018` | `docs/spec/09-known-issues/BUG-018.md` | `docs/spec/05-change-requests/CR-013.md` | `AC-113` | `TASK-065` | `briefing/app/api/briefings.py` | `tests/api/test_briefings.py` | verified |
 
 ## Coverage checklist
 
-- [ ] Every P0 requirement has acceptance criteria.
-- [ ] Every accepted requirement maps to at least one spec.
-- [ ] Every accepted requirement maps to implementation tasks.
-- [ ] Every accepted requirement maps to tests or an explicit manual verification method.
-- [ ] Every bug fix has a regression test or documented exception.
-- [ ] Every ADR maps to affected requirements or constraints.
-- [ ] Deprecated and superseded requirements are not used for new work.
+- [x] Every P0 requirement has acceptance criteria.
+- [x] Every accepted requirement maps to at least one spec.
+- [x] Every accepted requirement maps to implementation tasks.
+- [x] Every accepted requirement maps to tests or an explicit manual verification method.
+- [x] Every bug fix has a regression test or documented exception (as of the 2026-07-06 audit pass — `BUG-001` through `BUG-018` all have one).
+- [x] Every ADR maps to affected requirements or constraints.
+- [x] Deprecated and superseded requirements are not used for new work (`FR-006` marked superseded by `FR-032` via `CR-007`).
 
 ## Gaps
 
 | Gap ID | Missing link | Impact | Owner | Due date |
 |---|---|---|---|---|
-| `GAP-001` |  |  |  |  |
+| `GAP-001` (resolved 2026-07-06) | Epic 13 (FR-033/034/035) had no registry/traceability coverage despite shipped code | Medium — spec/code drift | Jason | Closed via `CR-008` |
+| `GAP-002` | README/OAuth setup guide (spec 12-5) accuracy not yet re-verified against the current onboarding flow | Low — usability/docs only | Jason | Open — next audit pass |
 

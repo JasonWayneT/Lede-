@@ -28,6 +28,80 @@ def test_build_auth_url_returns_consent_url():
         assert auth_url == "https://accounts.google.com/o/oauth2/auth?..."
 
 
+# ── BUG-010: get_credentials_path failure surfaces as StageError ───────────
+
+def test_build_auth_url_raises_stage_error_when_credentials_missing():
+    from app.core.config import AppConfig
+    from app.core.errors import StageError
+
+    with patch(
+        "app.services.gmail.get_credentials_path",
+        side_effect=FileNotFoundError("credentials.json not found"),
+    ):
+        from app.services import gmail
+
+        with pytest.raises(StageError) as excinfo:
+            gmail.build_auth_url(AppConfig())
+        assert excinfo.value.retryable is False
+        assert "credentials.json" in excinfo.value.message
+
+
+def test_exchange_code_raises_stage_error_when_credentials_missing():
+    from app.core.config import AppConfig
+    from app.core.errors import StageError
+
+    with patch(
+        "app.services.gmail.get_credentials_path",
+        side_effect=FileNotFoundError("credentials.json not found"),
+    ):
+        from app.services import gmail
+
+        with pytest.raises(StageError) as excinfo:
+            gmail.exchange_code("fake-code", "fake-state", AppConfig())
+        assert excinfo.value.retryable is False
+
+
+# ── BUG-010: corrupted settings.json no longer silently swallowed ─────────
+
+def test_lookback_query_logs_warning_on_corrupt_settings(tmp_path, caplog):
+    import logging
+    from app.core.config import AppConfig
+    from app.services import gmail
+
+    # gmail.py resolves settings.json as Path(__file__).parent.parent.parent / "data" / "settings.json"
+    # -- i.e. three levels up from app/services/gmail.py, then into data/.
+    fake_gmail_py = tmp_path / "app" / "services" / "gmail.py"
+    fake_gmail_py.parent.mkdir(parents=True, exist_ok=True)
+    settings_path = tmp_path / "data" / "settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text("{not valid json")
+
+    with patch.object(gmail, "__file__", str(fake_gmail_py)):
+        with caplog.at_level(logging.WARNING):
+            result = gmail._lookback_query(AppConfig())
+
+    assert "after:" in result  # still returns a usable query (defaults to 7 days)
+    assert any("settings.json" in r.message for r in caplog.records)
+
+
+def test_lookback_query_uses_configured_days_when_settings_valid(tmp_path):
+    from app.core.config import AppConfig
+    from app.services import gmail
+
+    fake_gmail_py = tmp_path / "app" / "services" / "gmail.py"
+    fake_gmail_py.parent.mkdir(parents=True, exist_ok=True)
+    settings_path = tmp_path / "data" / "settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(json.dumps({"lookback_days": 14}))
+
+    with patch.object(gmail, "__file__", str(fake_gmail_py)):
+        result = gmail._lookback_query(AppConfig())
+
+    from datetime import date, timedelta
+    expected_cutoff = (date.today() - timedelta(days=14)).strftime("%Y/%m/%d")
+    assert result == f"after:{expected_cutoff}"
+
+
 def test_exchange_code_stores_token_via_credentials_set():
     from app.core import credentials as credential_store
     from app.core.config import AppConfig

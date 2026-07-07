@@ -1,6 +1,12 @@
 # Story 8.3: Briefing History List and Download Endpoints
 
-Status: ready-for-dev
+Status: implemented (renamed — see note)
+
+> **2026-07-06 note (audit pass, doc drift D1):** this spec was written against a template named
+> `history.html`; the actual page is `app/templates/archive.html`, with `/history` redirecting to
+> `/archive` for backward compatibility (`main.py`). Cosmetic rename only — behavior matches this
+> spec's ACs. The hold-state "Needs Review"/Retry indicator (`BUG-006`) actually lives on the
+> dashboard, not this page — see `9-3-missed-run-detection.md`/`BUG-006`.
 
 ## Story
 

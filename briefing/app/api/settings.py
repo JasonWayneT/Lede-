@@ -114,22 +114,26 @@ async def update_gmail_label(
 @router.get("/gmail/authorize-redirect")
 async def authorize_redirect(config: AppConfig = Depends(get_config)):
     from app.services import gmail
+    from app.core.errors import StageError
     from fastapi.responses import RedirectResponse
     try:
         auth_url = gmail.build_auth_url(config)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except StageError as e:
+        # BUG-010: build_auth_url now raises StageError (not a raw FileNotFoundError) when
+        # credentials.json is missing.
+        raise HTTPException(status_code=500, detail=e.message)
     return RedirectResponse(auth_url)
 
 
 @router.post("/gmail/reauthorize")
 async def reauthorize_gmail(config: AppConfig = Depends(get_config)):
     from app.services import gmail
+    from app.core.errors import StageError
     from fastapi.responses import RedirectResponse
     try:
         auth_url = gmail.build_auth_url(config)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except StageError as e:
+        raise HTTPException(status_code=500, detail=e.message)
     return RedirectResponse(auth_url, status_code=303)
 
 
@@ -166,23 +170,24 @@ async def update_sections(body: SectionsBody, config: AppConfig = Depends(get_co
 # Depth settings (Story 8.6)
 # ---------------------------------------------------------------------------
 
-class DepthBody(BaseModel):
-    briefing_depth: str
-
-
 @router.get("/depth")
 async def get_depth(config: AppConfig = Depends(get_config)):
     return {"data": {"briefing_depth": config.briefing_depth}}
 
 
 @router.put("/depth")
-async def update_depth(body: DepthBody, config: AppConfig = Depends(get_config)):
+async def update_depth(
+    briefing_depth: str = Form(...),
+    config: AppConfig = Depends(get_config),
+):
+    # BUG-009 (CR-010): settings.html submits this as an HTML form (hx-put), not JSON —
+    # this route previously expected a Pydantic JSON body and silently 422'd on every save.
     valid = {"brief", "standard", "deep"}
-    if body.briefing_depth not in valid:
+    if briefing_depth not in valid:
         raise HTTPException(status_code=400, detail=f"Invalid depth. Must be one of: {sorted(valid)}")
-    config.briefing_depth = body.briefing_depth
-    _save_settings(config, {"briefing_depth": body.briefing_depth})
-    return {"data": {"briefing_depth": body.briefing_depth}}
+    config.briefing_depth = briefing_depth
+    _save_settings(config, {"briefing_depth": briefing_depth})
+    return {"data": {"briefing_depth": briefing_depth}}
 
 
 # ---------------------------------------------------------------------------
@@ -209,27 +214,28 @@ async def get_llm_settings(config: AppConfig = Depends(get_config)):
     }}
 
 
-class LLMBody(BaseModel):
-    provider: str | None = None
-    model_name: str | None = None
-    api_key: str | None = None
-
-
 @router.put("/llm")
-async def update_llm(body: LLMBody, config: AppConfig = Depends(get_config)):
+async def update_llm(
+    provider: str | None = Form(None),
+    model_name: str | None = Form(None),
+    api_key: str | None = Form(None),
+    config: AppConfig = Depends(get_config),
+):
+    # BUG-009 (CR-010): settings.html submits this as an HTML form (hx-put), not JSON —
+    # this route previously expected a Pydantic JSON body and silently 422'd on every save.
     valid = {"ollama", "openai", "anthropic", "gemini", "mcp_sampling"}
-    if body.provider and body.provider not in valid:
+    if provider and provider not in valid:
         raise HTTPException(status_code=400, detail=f"Invalid provider. Must be one of: {sorted(valid)}")
-    if body.provider:
-        config.llm_provider = body.provider
-        _save_settings(config, {"llm_provider": body.provider})
-    if body.model_name:
-        _set_model_name(config, body.model_name)
-        _save_settings(config, {f"{config.llm_provider}_model_name": body.model_name})
-    if body.api_key:
+    if provider:
+        config.llm_provider = provider
+        _save_settings(config, {"llm_provider": provider})
+    if model_name:
+        _set_model_name(config, model_name)
+        _save_settings(config, {f"{config.llm_provider}_model_name": model_name})
+    if api_key:
         cred_key = _provider_key_map.get(config.llm_provider)
         if cred_key:
-            credentials.set(cred_key, body.api_key)
+            credentials.set(cred_key, api_key)
     return {"data": {"provider": config.llm_provider, "model_name": _model_name_for(config)}}
 
 

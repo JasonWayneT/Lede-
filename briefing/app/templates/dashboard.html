@@ -93,6 +93,18 @@
   </div>
   {% endif %}
 
+  <!-- Missed-run banner — BUG-011 (9-3/AC-1): surface a missed scheduled run instead of
+       retrying silently in the background with no visible signal to the user. -->
+  {% if missed_run %}
+  <div class="alert alert-warning" id="missed-run-banner" style="margin-bottom:12px; display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+    <span class="badge badge-queued"><span class="badge-dot"></span> Missed run</span>
+    <span style="flex:1;">
+      Missed run at {{ missed_run.missed_at_display }}
+      {% if missed_run.retrying %} — retrying now{% else %} — a retry has not started yet{% endif %}
+    </span>
+  </div>
+  {% endif %}
+
   <!-- Status bar -->
   <div class="status-bar" id="status-bar">
     <div class="status-bar-idle" id="status-idle">

@@ -122,6 +122,27 @@ def test_missing_file_structural_returns_none():
 
 
 # ---------------------------------------------------------------------------
+# BUG-014 — corrupt/unreadable file is non-fatal, isolated to the one segment
+# ---------------------------------------------------------------------------
+
+
+def test_corrupt_file_story_falls_back_to_dry_voice(tmp_path):
+    bad_file = tmp_path / "corrupt.mp3"
+    bad_file.write_bytes(b"not a real audio file")
+    with patch.object(mixing.music, "MUSIC_BANK_DIR", tmp_path):
+        voice = np.zeros(44100, dtype=np.float32)
+        out = mixing.mix_story(voice, 44100, {"file": "corrupt.mp3"}, "medium")
+    assert out.shape == (44100, 2)
+
+
+def test_corrupt_file_structural_returns_none(tmp_path):
+    bad_file = tmp_path / "corrupt.mp3"
+    bad_file.write_bytes(b"not a real audio file")
+    with patch.object(mixing.music, "MUSIC_BANK_DIR", tmp_path):
+        assert mixing.mix_structural("intro", {"file": "corrupt.mp3"}) is None
+
+
+# ---------------------------------------------------------------------------
 # Real committed clip — validates soundfile MP3 read + scipy resample path
 # ---------------------------------------------------------------------------
 

@@ -114,6 +114,7 @@ async def _anthropic_complete(prompt: str, config: AppConfig, system: str | None
 
 async def _gemini_complete(prompt: str, config: AppConfig, system: str | None) -> str:
     import google.generativeai as genai
+    from google.api_core import exceptions as google_exceptions
 
     key = credentials.get(credentials.GEMINI_KEY)
     if not key:
@@ -126,10 +127,13 @@ async def _gemini_complete(prompt: str, config: AppConfig, system: str | None) -
         model = genai.GenerativeModel(config.gemini_model_name)
         resp = await model.generate_content_async(full_prompt)
         return resp.text or ""
+    except (google_exceptions.Unauthenticated, google_exceptions.PermissionDenied) as e:
+        # BUG-016 (CR-013): this used to classify auth errors by lowercasing the exception
+        # string and substring-matching "api key"/"permission"/"unauthenticated" -- any unrelated
+        # SDK error or wording change would get silently misclassified. Use the SDK's own typed
+        # exceptions instead, matching the pattern already used for OpenAI/Anthropic above.
+        raise StageError("llm", "Gemini API key invalid or expired.", code=AUTH_ERROR, retryable=False) from e
     except Exception as e:
-        err_str = str(e).lower()
-        if "api key" in err_str or "permission" in err_str or "unauthenticated" in err_str:
-            raise StageError("llm", "Gemini API key invalid or expired.", code=AUTH_ERROR, retryable=False) from e
         raise StageError("llm", f"Gemini error: {e}", code=PROVIDER_UNAVAILABLE, retryable=True) from e
 
 

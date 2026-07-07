@@ -1,6 +1,11 @@
 # Story 8.2: Dashboard -- Run Trigger and Live Pipeline Log
 
-Status: ready-for-dev
+Status: implemented (transport detail differs from architecture doc — see note)
+
+> **2026-07-06 note (audit pass, doc drift D2):** `docs/ARCHITECTURE.md` describes the live log as
+> using the HTMX SSE extension (`hx-ext="sse"`); the actual implementation in `dashboard.html` uses
+> hand-rolled vanilla JS (`EventSource`) against `/api/stream/{run_id}`. Functionally equivalent —
+> all ACs below are met — just a different client-side transport than originally documented.
 
 ## Story
 

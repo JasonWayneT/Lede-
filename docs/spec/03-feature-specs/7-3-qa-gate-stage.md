@@ -1,6 +1,16 @@
 # Story 7.3: QA Gate Stage -- Pre-Delivery Validation
 
-Status: ready-for-dev
+Status: implemented (Check 1 revised — see `CR-007`)
+
+> **2026-07-06 update (`CR-007`):** Check 1 below originally required every *configured* section to
+> have at least one story. Since `CR-007` (`select.py` now assigns freeform, LLM-generated section
+> names instead of classifying against a fixed `config.sections` list — see `4-6-select-stage.md`),
+> "every configured section has a story" is no longer a meaningful check: there is no longer a
+> fixed, enumerable list of sections to check coverage against, and which topics show up is
+> expected to vary run to run. Check 1 was rewritten to only require that *some* stories were
+> drafted at all (a real regression signal — an empty briefing), and the code + existing tests
+> already reflect this. This note brings the spec back in sync with that shipped behavior — see
+> `AC-091`.
 
 ## Story
 
@@ -10,7 +20,7 @@ so that users never receive a silently broken or incomplete briefing.
 
 ## Acceptance Criteria
 
-1. **Given** an assembled briefing, **When** the QA gate runs, **Then** it checks: every configured section has at least one story; every story has source attribution; the TTS script contains no unresolved markdown or raw URLs; estimated audio runtime is within a reasonable range (30 seconds to 90 minutes)
+1. **Given** an assembled briefing, **When** the QA gate runs, **Then** it checks: at least one story was drafted overall (not per-section coverage — see update note above); every story has source attribution; the TTS script contains no unresolved markdown or raw URLs; estimated audio runtime is within a reasonable range (30 seconds to 90 minutes)
 
 2. **Given** all QA checks passing, **When** the gate completes, **Then** `packet.qa_passed = True` and the orchestrator proceeds to finalize the Run
 

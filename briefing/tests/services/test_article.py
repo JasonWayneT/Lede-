@@ -1,4 +1,6 @@
-"""Tests for app.services.article — FR-27."""
+"""Tests for app.services.article — FR-034 (SSRF guard: CR-009/BUG-008)."""
+
+import asyncio
 
 import pytest
 
@@ -82,3 +84,72 @@ async def test_fetch_articles_skips_failed_urls(monkeypatch):
     results = await art_module.fetch_articles(["https://good.com/a", "https://bad.com/b"])
     assert len(results) == 1
     assert results[0]["url"] == "https://good.com/a"
+
+
+# ── SSRF guard (CR-009 / BUG-008) ───────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_rejects_non_http_scheme():
+    from app.services.article import _is_url_safe_to_fetch
+    assert await _is_url_safe_to_fetch("file:///etc/passwd") is False
+    assert await _is_url_safe_to_fetch("ftp://example.com/x") is False
+
+
+@pytest.mark.asyncio
+async def test_rejects_loopback_ip():
+    from app.services.article import _is_url_safe_to_fetch
+    assert await _is_url_safe_to_fetch("http://127.0.0.1:8000/admin") is False
+
+
+@pytest.mark.asyncio
+async def test_rejects_localhost_hostname():
+    from app.services.article import _is_url_safe_to_fetch
+    assert await _is_url_safe_to_fetch("http://localhost/internal") is False
+
+
+@pytest.mark.asyncio
+async def test_rejects_link_local_metadata_ip():
+    from app.services.article import _is_url_safe_to_fetch
+    assert await _is_url_safe_to_fetch("http://169.254.169.254/latest/meta-data/") is False
+
+
+@pytest.mark.asyncio
+async def test_rejects_private_network_ip():
+    from app.services.article import _is_url_safe_to_fetch
+    assert await _is_url_safe_to_fetch("http://10.0.0.5/") is False
+    assert await _is_url_safe_to_fetch("http://192.168.1.1/") is False
+
+
+@pytest.mark.asyncio
+async def test_allows_public_ip(monkeypatch):
+    from app.services import article as art_module
+    monkeypatch.setattr(art_module, "_resolve_ips_sync", lambda hostname: ["93.184.216.34"])
+    assert await art_module._is_url_safe_to_fetch("https://example.com/article") is True
+
+
+@pytest.mark.asyncio
+async def test_fails_open_when_dns_does_not_resolve(monkeypatch):
+    from app.services import article as art_module
+    monkeypatch.setattr(art_module, "_resolve_ips_sync", lambda hostname: [])
+    assert await art_module._is_url_safe_to_fetch("https://this-does-not-resolve.invalid/") is True
+
+
+@pytest.mark.asyncio
+async def test_fails_open_on_dns_timeout(monkeypatch):
+    from app.services import article as art_module
+
+    async def timing_out_wait_for(coro, timeout):
+        coro.close()
+        raise asyncio.TimeoutError
+
+    monkeypatch.setattr(art_module.asyncio, "wait_for", timing_out_wait_for)
+    assert await art_module._is_url_safe_to_fetch("https://example.com/") is True
+
+
+@pytest.mark.asyncio
+async def test_fetch_article_rejects_unsafe_url_before_extraction(monkeypatch):
+    from app.services import article as art_module
+    called = []
+    monkeypatch.setattr(art_module, "_trafilatura_extract", lambda url: called.append(url))
+    assert await art_module.fetch_article("http://127.0.0.1/secret") is None
+    assert called == []

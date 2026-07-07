@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from email.utils import parseaddr, parsedate_to_datetime
@@ -25,6 +26,8 @@ from app.core import credentials as credential_store
 from app.core.config import AppConfig
 from app.core.errors import AUTH_ERROR, StageError
 from app.db.models import ProcessedEmail
+
+logger = logging.getLogger(__name__)
 
 GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
@@ -63,7 +66,11 @@ def get_credentials_path(config: AppConfig) -> Path:
 
 def build_auth_url(config: AppConfig) -> str:
     """Return the Google OAuth consent URL to redirect the user to."""
-    path = get_credentials_path(config)
+    try:
+        path = get_credentials_path(config)
+    except FileNotFoundError as e:
+        # BUG-010: this used to escape as a raw FileNotFoundError, reachable mid-OAuth-flow.
+        raise StageError("gmail_oauth", str(e), retryable=False, code=AUTH_ERROR) from e
     flow = Flow.from_client_secrets_file(
         str(path),
         scopes=[GMAIL_READONLY_SCOPE],
@@ -78,7 +85,11 @@ def build_auth_url(config: AppConfig) -> str:
 
 def exchange_code(code: str, state: str, config: AppConfig) -> None:
     """Exchange the OAuth callback code for a token and store it."""
-    path = get_credentials_path(config)
+    try:
+        path = get_credentials_path(config)
+    except FileNotFoundError as e:
+        # BUG-010: this used to escape as a raw FileNotFoundError, reachable mid-OAuth-flow.
+        raise StageError("gmail_oauth", str(e), retryable=False, code=AUTH_ERROR) from e
     flow = Flow.from_client_secrets_file(
         str(path),
         scopes=[GMAIL_READONLY_SCOPE],
@@ -124,12 +135,20 @@ def _lookback_query(config: AppConfig) -> str:
     from datetime import date, timedelta
     settings_path = Path(__file__).parent.parent.parent / "data" / "settings.json"
     stored: dict = {}
+    days = 7
     if settings_path.exists():
         try:
             stored = json.loads(settings_path.read_text())
-        except Exception:
-            pass
-    days = int(stored.get("lookback_days", 7))
+            days = int(stored.get("lookback_days", 7))
+        except Exception as e:
+            # BUG-010: this used to swallow the error silently and fall back to 7 days with
+            # no signal at all -- a corrupted settings.json would silently narrow ingest with
+            # no way for the user to know their lookback setting stopped applying.
+            logger.warning(
+                "Could not read lookback_days from %s (%s) — defaulting to 7 days",
+                settings_path, e,
+            )
+            days = 7
     cutoff = (date.today() - timedelta(days=days)).strftime("%Y/%m/%d")
     return f"after:{cutoff}"
 

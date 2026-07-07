@@ -1,4 +1,4 @@
-"""YouTube transcript extraction service — FR-26."""
+"""YouTube transcript extraction service — FR-033 (PRD FR-26; see CR-008)."""
 
 from __future__ import annotations
 

@@ -206,6 +206,55 @@ async def test_gemini_complete_success():
     assert result == "gemini reply"
 
 
+# ── BUG-016: Gemini auth errors classified by typed exception, not string match ──
+
+@pytest.mark.asyncio
+async def test_gemini_permission_denied_raises_auth_error():
+    from google.api_core import exceptions as google_exceptions
+    from app.core.errors import AUTH_ERROR, StageError
+
+    cfg = _config(llm_provider="gemini")
+
+    with patch("app.core.credentials.get", return_value="test-key"), \
+         patch("google.generativeai.configure"), \
+         patch("google.generativeai.GenerativeModel") as mock_model_cls:
+        mock_model = MagicMock()
+        mock_model_cls.return_value = mock_model
+        mock_model.generate_content_async = AsyncMock(
+            side_effect=google_exceptions.PermissionDenied("no access")
+        )
+
+        with pytest.raises(StageError) as excinfo:
+            await llm_module.complete("hello", cfg)
+
+    assert excinfo.value.code == AUTH_ERROR
+    assert excinfo.value.retryable is False
+
+
+@pytest.mark.asyncio
+async def test_gemini_unrelated_error_does_not_misclassify_as_auth_error():
+    # BUG-016 regression: an unrelated SDK error (e.g. a transient service error) must not be
+    # swept into AUTH_ERROR just because string-matching used to be loose.
+    from app.core.errors import PROVIDER_UNAVAILABLE, StageError
+
+    cfg = _config(llm_provider="gemini")
+
+    with patch("app.core.credentials.get", return_value="test-key"), \
+         patch("google.generativeai.configure"), \
+         patch("google.generativeai.GenerativeModel") as mock_model_cls:
+        mock_model = MagicMock()
+        mock_model_cls.return_value = mock_model
+        mock_model.generate_content_async = AsyncMock(
+            side_effect=RuntimeError("temporary hiccup, no api key or permission wording here")
+        )
+
+        with pytest.raises(StageError) as excinfo:
+            await llm_module.complete("hello", cfg)
+
+    assert excinfo.value.code == PROVIDER_UNAVAILABLE
+    assert excinfo.value.retryable is True
+
+
 # ---------------------------------------------------------------------------
 # Story 3.3 — MCP sampling
 # ---------------------------------------------------------------------------

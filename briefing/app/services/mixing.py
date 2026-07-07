@@ -157,7 +157,7 @@ def _clip_guard(buf: np.ndarray) -> np.ndarray:
 
 
 def _load_music(selected_music: dict | None) -> np.ndarray | None:
-    """Load a music clip as 44.1 kHz stereo float32, or None if missing/absent (non-fatal)."""
+    """Load a music clip as 44.1 kHz stereo float32, or None if missing/absent/corrupt (non-fatal)."""
     if not selected_music:
         return None
     path = music.MUSIC_BANK_DIR / selected_music["file"]
@@ -166,7 +166,14 @@ def _load_music(selected_music: dict | None) -> np.ndarray | None:
         return None
     import soundfile as sf
 
-    data, sr = sf.read(str(path), dtype="float32", always_2d=True)
+    try:
+        data, sr = sf.read(str(path), dtype="float32", always_2d=True)
+    except Exception as e:
+        # BUG-014 (CR-013): this used to raise uncaught, propagating up through synthesize_plan
+        # and taking out audio for the *entire* briefing over one corrupt/zero-length clip --
+        # degrade to "no music for this segment" instead, same as the missing-file case above.
+        logger.warning("Mixing: music file unreadable: %s (%s) — falling back to no music", path, e)
+        return None
     data = _resample(data, sr, TARGET_SR)
     data = _to_stereo(data)
     return _compress_transients(data)
