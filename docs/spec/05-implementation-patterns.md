@@ -165,3 +165,31 @@ It exposes four tools: `trigger_briefing`, `get_run_status`, `list_briefings`, `
 Each tool initializes its own `AppConfig` and database session. This keeps the MCP server stateless and safe to run alongside or independently of the web UI.
 
 To add a new MCP tool: register it in `mcp_server.py` with `@mcp.tool()` and use the same async session pattern as existing tools.
+
+---
+
+## 9. Source-text budgeting pattern
+
+Any stage that builds an LLM prompt from newsletter/article source text should go through
+`briefing/app/services/condense.py` instead of slicing `entry["text"]` with a hard character
+limit directly.
+
+**Why:** frame and draft used to each truncate source text independently (300 vs 500 chars) —
+inconsistent, and small enough that drafted stories read as headline teasers rather than real
+explanations. See `docs/spec/07-decisions/ADR-001.md` for the full rationale.
+
+**Usage:**
+```python
+from app.services import condense
+
+source_texts = await condense.get_source_texts(cluster, config)  # list[str], one per cluster entry, same order
+```
+
+- Text under `condense.SOURCE_TEXT_BUDGET_CHARS` (4000) passes through unmodified — no LLM call.
+- Text over budget is split on sentence boundaries (never mid-sentence) and run through an
+  extraction-only prompt per chunk (`pipeline_prompts/stages/condense.md`); the concatenated
+  extracted facts are returned. This is a single map pass — condense.py never runs a separate
+  reduce/merge LLM call; whichever stage consumes the result is expected to do that synthesis.
+- If one stage already computed `source_texts` for a cluster (frame does, storing it on the framed
+  story dict), a later stage (draft) should read that field directly rather than calling
+  `condense.get_source_texts()` again — avoids a duplicate condensation pass on the same source.

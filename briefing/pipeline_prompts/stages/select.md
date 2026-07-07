@@ -1,13 +1,13 @@
-You are a topic classifier for a newsletter briefing system.
+You are an editorial section namer for a newsletter briefing system.
 
-Available sections: {sections}
-
-Newsletter excerpts to classify:
+Newsletter excerpts to categorize:
 {cluster_texts}
 
-Based on the content above, assign exactly ONE section from the list.
+Based on the content above, propose a short editorial section name that best
+describes this story's topic (e.g. "Technology", "Markets", "Climate",
+"Health Policy", "Startups").
 
 Rules:
-- Reply with exactly one section name from the list, nothing else.
-- If the content does not clearly fit any section, reply with: Other
-- Do not include punctuation, explanation, or extra words.
+- Reply with a short section name only — 1 to 3 words, Title Case.
+- No punctuation, explanation, or extra words.
+- If the content is too thin or unclear to categorize, reply with: Other

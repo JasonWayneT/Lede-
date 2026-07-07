@@ -47,6 +47,9 @@ async def _ollama_complete(prompt: str, config: AppConfig, system: str | None) -
         "model": config.ollama_model_name,
         "prompt": prompt,
         "stream": False,
+        # Implements BUG-001, ARCH-006 — without this, Ollama silently defaults num_ctx to 2048
+        # regardless of what the configured model actually supports.
+        "options": {"num_ctx": config.ollama_num_ctx},
     }
     if system:
         body["system"] = system

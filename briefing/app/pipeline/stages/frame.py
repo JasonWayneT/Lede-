@@ -1,6 +1,6 @@
 """Frame stage — assign depth tier, lead angle, and guardrails to each cluster."""
 
-# Implements FR-005, ARCH-003
+# Implements FR-005, ARCH-003, FR-028
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 from app.core.config import AppConfig
 from app.core.errors import StageError
 from app.pipeline.handoff import HandoffPacket
-from app.services import llm
+from app.services import condense, llm
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,12 @@ _UPGRADE: dict[tuple[str, int], str] = {
     ("brief", 3): "standard",
     ("standard", 5): "deep",
 }
+
+# Implements FR-028 — music sensitivity/weight classification (Music Roadmap Phase 2, see ADR-002)
+_ALLOWED_SENSITIVITY = {"normal", "serious", "sensitive", "crisis"}
+_ALLOWED_STORY_WEIGHT = {"light", "medium", "heavy", "sensitive"}
+_DEFAULT_SENSITIVITY = "normal"
+_DEFAULT_STORY_WEIGHT = "medium"
 
 
 def _depth_tier(baseline: str, source_count: int) -> str:
@@ -41,15 +47,35 @@ def _parse_frame_response(response: str) -> dict:
     for candidate in candidates:
         try:
             data = json.loads(candidate)
+            sensitivity = str(data.get("sensitivity", _DEFAULT_SENSITIVITY))
+            if sensitivity not in _ALLOWED_SENSITIVITY:
+                logger.warning(
+                    "Frame: invalid sensitivity '%s'; defaulting to '%s'", sensitivity, _DEFAULT_SENSITIVITY
+                )
+                sensitivity = _DEFAULT_SENSITIVITY
+            story_weight = str(data.get("story_weight", _DEFAULT_STORY_WEIGHT))
+            if story_weight not in _ALLOWED_STORY_WEIGHT:
+                logger.warning(
+                    "Frame: invalid story_weight '%s'; defaulting to '%s'", story_weight, _DEFAULT_STORY_WEIGHT
+                )
+                story_weight = _DEFAULT_STORY_WEIGHT
             return {
                 "lead_angle": str(data.get("lead_angle", "")),
                 "local_stakes": str(data.get("local_stakes", "")),
                 "guardrails": list(data.get("guardrails", [])),
+                "sensitivity": sensitivity,
+                "story_weight": story_weight,
             }
         except (json.JSONDecodeError, ValueError):
             continue
     logger.warning("Frame: could not parse LLM JSON response; using defaults")
-    return {"lead_angle": "", "local_stakes": "", "guardrails": []}
+    return {
+        "lead_angle": "",
+        "local_stakes": "",
+        "guardrails": [],
+        "sensitivity": _DEFAULT_SENSITIVITY,
+        "story_weight": _DEFAULT_STORY_WEIGHT,
+    }
 
 
 async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
@@ -62,7 +88,9 @@ async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
         source_count = len(cluster)
         depth_tier = _depth_tier(config.briefing_depth, source_count)
 
-        snippets = "\n".join(f"- {entry.get('text', '')[:300]}" for entry in cluster)
+        # Implements FR-027, ARCH-006 — shared budget/condensation instead of a fixed 300-char slice
+        source_texts = await condense.get_source_texts(cluster, config)
+        snippets = "\n".join(f"- {t}" for t in source_texts)
         prompt = prompt_template.format(
             section=section_name,
             source_count=source_count,
@@ -82,6 +110,7 @@ async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
             **sc,
             "depth_tier": depth_tier,
             "source_count": source_count,
+            "source_texts": source_texts,
             **frame_data,
         })
 

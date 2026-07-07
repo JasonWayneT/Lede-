@@ -22,7 +22,7 @@ async def test_put_gmail_label(async_client, tmp_path):
     import app.api.settings as s
     cfg = s.get_config()
     with patch.object(s, "_save_settings"):
-        resp = await async_client.put("/api/settings/gmail", json={"label": "My Newsletters"})
+        resp = await async_client.put("/api/settings/gmail", data={"label": "My Newsletters"})
     assert resp.status_code == 200
     assert resp.json()["data"]["label"] == "My Newsletters"
 
@@ -117,7 +117,7 @@ async def test_get_schedule(async_client):
 
 @pytest.mark.asyncio
 async def test_put_schedule_invalid_cadence(async_client):
-    resp = await async_client.put("/api/settings/schedule", json={"cadence": "hourly", "time": "07:00"})
+    resp = await async_client.put("/api/settings/schedule", data={"cadence": "hourly", "time": "07:00"})
     assert resp.status_code == 400
 
 
@@ -149,7 +149,7 @@ async def test_get_tts_settings(async_client):
 async def test_put_tts_kokoro_succeeds(async_client):
     import app.api.settings as s
     with patch.object(s, "_save_settings"):
-        resp = await async_client.put("/api/settings/tts", json={"engine": "kokoro"})
+        resp = await async_client.put("/api/settings/tts", data={"engine": "kokoro"})
     assert resp.status_code == 200
     assert resp.json()["data"]["engine"] == "kokoro"
 
@@ -157,14 +157,14 @@ async def test_put_tts_kokoro_succeeds(async_client):
 @pytest.mark.asyncio
 async def test_put_tts_orpheus_no_cuda_returns_400(async_client):
     with patch("app.services.tts.cuda_available", return_value=False):
-        resp = await async_client.put("/api/settings/tts", json={"engine": "orpheus"})
+        resp = await async_client.put("/api/settings/tts", data={"engine": "orpheus"})
     assert resp.status_code == 400
     assert "CUDA" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
 async def test_put_tts_invalid_engine_returns_400(async_client):
-    resp = await async_client.put("/api/settings/tts", json={"engine": "coqui"})
+    resp = await async_client.put("/api/settings/tts", data={"engine": "coqui"})
     assert resp.status_code == 400
 
 

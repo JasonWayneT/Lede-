@@ -2,31 +2,55 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 
-def test_authorize_stores_token_via_credentials_set():
+def test_build_auth_url_returns_consent_url():
+    from app.core.config import AppConfig
+
+    fake_flow = Mock()
+    fake_flow.authorization_url.return_value = ("https://accounts.google.com/o/oauth2/auth?...", "state-123")
+
+    with (
+        patch("app.services.gmail.get_credentials_path", return_value=Path("/fake/credentials.json")),
+        patch("app.services.gmail.Flow") as flow_cls,
+    ):
+        flow_cls.from_client_secrets_file.return_value = fake_flow
+
+        from app.services import gmail
+
+        auth_url = gmail.build_auth_url(AppConfig())
+
+        flow_cls.from_client_secrets_file.assert_called_once()
+        assert auth_url == "https://accounts.google.com/o/oauth2/auth?..."
+
+
+def test_exchange_code_stores_token_via_credentials_set():
     from app.core import credentials as credential_store
+    from app.core.config import AppConfig
 
     fake_creds = Mock()
     fake_creds.to_json.return_value = '{"access_token":"x"}'
 
+    fake_flow = Mock()
+    fake_flow.credentials = fake_creds
+
     with (
-        patch("app.services.gmail.InstalledAppFlow") as flow_cls,
+        patch("app.services.gmail.get_credentials_path", return_value=Path("/fake/credentials.json")),
+        patch("app.services.gmail.Flow") as flow_cls,
         patch("app.services.gmail.credential_store.set") as set_cred,
     ):
-        flow = Mock()
-        flow.run_local_server.return_value = fake_creds
-        flow_cls.from_client_secrets_file.return_value = flow
+        flow_cls.from_client_secrets_file.return_value = fake_flow
 
         from app.services import gmail
 
-        gmail.authorize()
+        gmail.exchange_code("auth-code", "state-123", AppConfig())
 
         flow_cls.from_client_secrets_file.assert_called_once()
-        flow.run_local_server.assert_called_once()
+        fake_flow.fetch_token.assert_called_once_with(code="auth-code")
         set_cred.assert_called_once_with(credential_store.GMAIL_OAUTH_TOKEN, fake_creds.to_json())
 
 

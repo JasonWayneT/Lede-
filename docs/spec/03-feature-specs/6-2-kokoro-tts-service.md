@@ -2,6 +2,19 @@
 
 Status: ready-for-dev
 
+> **Amendment (CR-005 / FR-030).** In addition to `synthesize(script, output_path, guide)` (still
+> present, used as the resume-path fallback), the service now exposes
+> `synthesize_plan(segments, output_path, guide)`, which renders each narrated segment separately,
+> records `duration_seconds` on it, and concatenates the narration into the same single
+> `briefing.mp3`. Structural (music-only) segments produce no audio in Phase 4. See
+> `docs/spec/03-feature-specs/6-4-audio-segment-plan.md` and `docs/spec/07-decisions/ADR-004.md`.
+>
+> **Amendment 2 (CR-006 / FR-031).** `synthesize_plan` now *mixes* each segment via
+> `app/services/mixing.py` instead of concatenating dry narration: music beds ducked under story
+> narration, music-only stingers for intro/outro/section_transition. Output is 44.1 kHz stereo.
+> Structural segments are now audible. See `docs/spec/03-feature-specs/6-5-audio-mixing.md` and
+> `docs/spec/07-decisions/ADR-005.md`.
+
 ## Story
 
 As a developer,

@@ -25,10 +25,6 @@
     </div>
     <div class="feed-actions">
       <button class="btn btn-primary" id="run-btn"
-              hx-post="/api/briefings"
-              hx-trigger="click"
-              hx-target="#run-response"
-              hx-swap="innerHTML"
               {% if run_active %}disabled{% endif %}
               onclick="onRunClick(this)">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -39,6 +35,63 @@
     </div>
   </div>
   <div id="run-response" style="display:none"></div>
+
+  <!-- Mode tabs -->
+  <div class="mode-tabs" id="mode-tabs">
+    <button class="mode-tab active" id="tab-newsletters" onclick="switchMode('newsletters')">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M1 5l6 4 6-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      Newsletters
+    </button>
+    <button class="mode-tab" id="tab-youtube" onclick="switchMode('youtube')">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <rect x="1" y="2.5" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M5.5 5l4 2-4 2V5z" fill="currentColor"/>
+      </svg>
+      YouTube
+    </button>
+    <button class="mode-tab" id="tab-article" onclick="switchMode('article')">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M2 3h10M2 6h7M2 9h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      Article
+    </button>
+  </div>
+
+  <!-- URL panel — YouTube -->
+  <div class="url-panel" id="panel-youtube">
+    <span class="url-panel-label">YouTube URLs</span>
+    <textarea class="url-textarea" id="urls-youtube"
+              placeholder="https://youtube.com/watch?v=...&#10;One URL per line"></textarea>
+    <span class="url-panel-hint">One URL per line. Transcripts are fetched automatically — no login needed.</span>
+  </div>
+
+  <!-- URL panel — Article -->
+  <div class="url-panel" id="panel-article">
+    <span class="url-panel-label">Article URLs</span>
+    <textarea class="url-textarea" id="urls-article"
+              placeholder="https://example.com/article&#10;One URL per line"></textarea>
+    <span class="url-panel-hint">One URL per line. Article body is extracted automatically.</span>
+  </div>
+
+  <!-- Hold banner — BUG-006: surface a failed/held run and its reason here, not just on History -->
+  {% if hold_run %}
+  <div class="alert alert-error" id="hold-banner" style="margin-bottom:12px; display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+    <span class="badge badge-hold"><span class="badge-dot"></span> Needs attention</span>
+    <span style="flex:1;">{{ hold_run.error or "The last run stopped and is waiting for a retry." }}</span>
+    <button hx-post="/api/briefings/{{ hold_run.run_id }}/retry"
+            hx-confirm="Retry this run from the failed stage?"
+            hx-swap="none"
+            class="btn btn-secondary">Retry</button>
+    <button hx-delete="/api/briefings/{{ hold_run.run_id }}/error"
+            hx-confirm="Dismiss this error?"
+            hx-swap="outerHTML"
+            hx-target="#hold-banner"
+            class="btn btn-secondary">Dismiss</button>
+  </div>
+  {% endif %}
 
   <!-- Status bar -->
   <div class="status-bar" id="status-bar">
@@ -144,9 +197,29 @@
     assemble: 'Assembling your briefing…',
     qa_gate:  'Checking quality…',
   };
+  const STAGE_LABELS_YOUTUBE = Object.assign({}, STAGE_LABELS, {
+    embed: 'Analysing transcript…',
+  });
+  const STAGE_LABELS_ARTICLE = Object.assign({}, STAGE_LABELS, {
+    embed: 'Analysing article content…',
+  });
   const STAGE_ORDER = Object.keys(STAGE_LABELS);
 
-  // Feed dropdown
+  // ── Mode switcher ──────────────────────────────────────────────
+  let currentMode = 'newsletters';
+
+  function switchMode(mode) {
+    currentMode = mode;
+    ['newsletters', 'youtube', 'article'].forEach(m => {
+      document.getElementById('tab-' + m).classList.toggle('active', m === mode);
+    });
+    ['youtube', 'article'].forEach(m => {
+      const panel = document.getElementById('panel-' + m);
+      panel.classList.toggle('visible', m === mode);
+    });
+  }
+
+  // ── Feed dropdown ──────────────────────────────────────────────
   function toggleFeedMenu() {
     document.getElementById('feed-dropdown-menu').classList.toggle('open');
   }
@@ -157,27 +230,68 @@
     }
   });
 
-  // Run button
-  function onRunClick(btn) {
+  // ── Run button ─────────────────────────────────────────────────
+  async function onRunClick(btn) {
     btn.disabled = true;
     btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg> Running…';
+
+    try {
+      let runId;
+      if (currentMode === 'newsletters') {
+        const r = await fetch('/api/briefings', { method: 'POST',
+          headers: {'Content-Type': 'application/json'}, body: '{}' });
+        if (!r.ok) {
+          const e = await r.json().catch(() => ({}));
+          throw new Error(e.detail || r.statusText);
+        }
+        const d = await r.json();
+        runId = d.run_id;
+      } else {
+        const ta = document.getElementById('urls-' + currentMode);
+        const urls = (ta.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+        if (!urls.length) {
+          showRunError('Paste at least one URL to continue.');
+          resetRunBtn(btn);
+          return;
+        }
+        const r = await fetch('/api/briefings/on-demand', { method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ urls, source_type: currentMode }) });
+        if (!r.ok) {
+          const e = await r.json().catch(() => ({}));
+          throw new Error(e.detail || r.statusText);
+        }
+        const d = await r.json();
+        runId = d.run_id;
+      }
+      if (runId) startSSE(runId);
+    } catch (err) {
+      showRunError(err.message || 'Something went wrong — try again.');
+      resetRunBtn(btn);
+    }
   }
 
-  // Handle HTMX response — start SSE
-  document.body.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.elt.id !== 'run-btn') return;
-    try {
-      const data = JSON.parse(evt.detail.xhr.responseText);
-      if (data.run_id) startSSE(data.run_id);
-    } catch(e) {}
-  });
+  function resetRunBtn(btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg> Run now';
+  }
 
+  function showRunError(msg) {
+    const el = document.getElementById('run-response');
+    el.style.display = 'block';
+    el.innerHTML = '<div class="alert alert-error" style="margin-bottom:12px">' + msg + '</div>';
+    setTimeout(() => { el.style.display = 'none'; el.innerHTML = ''; }, 6000);
+  }
+
+  // ── SSE progress ───────────────────────────────────────────────
   function startSSE(runId) {
-    // Switch status bar to running mode
     document.getElementById('status-idle').style.display = 'none';
     const running = document.getElementById('status-running');
     running.style.display = 'flex';
 
+    const labels = currentMode === 'youtube' ? STAGE_LABELS_YOUTUBE
+                 : currentMode === 'article' ? STAGE_LABELS_ARTICLE
+                 : STAGE_LABELS;
     let stageIndex = -1;
     const es = new EventSource('/api/stream/' + runId);
 
@@ -188,29 +302,25 @@
         const idx = STAGE_ORDER.indexOf(stageName);
         if (idx !== -1 && idx > stageIndex) {
           stageIndex = idx;
-          // Update pips
           for (let i = 0; i < 10; i++) {
             const pip = document.getElementById('pip-' + i);
             if (!pip) continue;
-            if (i < idx)       { pip.className = 'pip done'; }
-            else if (i === idx) { pip.className = 'pip active'; }
-            else               { pip.className = 'pip'; }
+            if (i < idx)        pip.className = 'pip done';
+            else if (i === idx) pip.className = 'pip active';
+            else                pip.className = 'pip';
           }
-          // Update label
-          document.getElementById('stage-label').textContent = STAGE_LABELS[stageName] || stageName;
+          document.getElementById('stage-label').textContent = labels[stageName] || stageName;
         }
       } catch(e) {}
     });
 
     es.addEventListener('complete', function(e) {
       es.close();
-      // All pips done
       for (let i = 0; i < 10; i++) {
         const pip = document.getElementById('pip-' + i);
         if (pip) pip.className = 'pip done';
       }
       document.getElementById('stage-label').textContent = 'Complete — reloading…';
-      // Reload the page to show new briefing
       setTimeout(() => window.location.reload(), 1200);
     });
 
@@ -221,12 +331,12 @@
         document.getElementById('stage-label').style.color = 'var(--error)';
       } catch(ex) {}
       es.close();
-      document.getElementById('run-btn').disabled = false;
-      document.getElementById('run-btn').innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg> Run now';
+      const btn = document.getElementById('run-btn');
+      resetRunBtn(btn);
     });
   }
 
-  // Audio player
+  // ── Audio player ───────────────────────────────────────────────
   {% if briefing and briefing.audio_path %}
   const audio = document.getElementById('briefing-audio');
   let playing = false;

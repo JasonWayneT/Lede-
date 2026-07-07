@@ -22,7 +22,10 @@ so that I can control when my briefings run and whether they run even when the b
 
 - [ ] Implement schedule settings endpoints in `app/api/settings.py` (AC: 1, 2)
   - [ ] `GET /api/settings/schedule` → `{"data": {"cadence": "daily"|"every_other_day"|"weekly"|"off", "time": "07:00", "next_run": "ISO8601"|null, "daemon_mode": false}}`
-  - [ ] `PUT /api/settings/schedule` → accepts cadence, time, daemon_mode; persists to `data/settings.json`; updates APScheduler job (from Story 9.1)
+  - [ ] `PUT /api/settings/schedule` → accepts form-encoded fields `cadence`, `time`, `day_of_week`,
+        `daemon_mode` (`Form(...)` params — matches the plain HTML `<form hx-put="...">` in
+        `settings.html`; switched from a JSON body in `7281a94`, see `BUG-002`); persists to
+        `data/settings.json`; updates APScheduler job (from Story 9.1)
 
 - [ ] Implement "next run" calculation (AC: 2)
   - [ ] After PUT: calculate next run datetime from cadence + time

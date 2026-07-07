@@ -23,6 +23,7 @@ class HandoffPacket:
     framed_stories: list = field(default_factory=list)
     drafted_stories: list = field(default_factory=list)
     assembled_markdown: str = ""
+    audio_segments: list = field(default_factory=list)  # FR-030 — ordered audio segment plan
     tts_script: str = ""
     pronunciation_guide: dict = field(default_factory=dict)
     qa_passed: bool = False

@@ -37,13 +37,24 @@ async def test_all_checks_pass():
 
 
 @pytest.mark.asyncio
-async def test_missing_section_raises():
+async def test_uneven_section_coverage_does_not_raise():
+    # Sections are derived from content per-run; a day with no Finance news
+    # should not fail QA just because a configured section is empty.
     packet = _packet_ok()
     config = _config(sections=["AI", "Finance", "Other"])
     packet.drafted_stories = [_story("AI")]
+    result = await qa_gate.run(packet, config)
+    assert result.qa_passed is True
+
+
+@pytest.mark.asyncio
+async def test_no_stories_drafted_raises():
+    packet = _packet_ok()
+    config = _config(sections=["AI", "Finance", "Other"])
+    packet.drafted_stories = []
     with pytest.raises(StageError) as exc_info:
         await qa_gate.run(packet, config)
-    assert "Finance" in exc_info.value.message
+    assert "no stories" in exc_info.value.message.lower()
     assert exc_info.value.retryable is True
 
 

@@ -1,6 +1,17 @@
 # Story 6.1: TTS Prep Stage -- Spoken-Form Optimization
 
-Status: ready-for-dev
+Status: superseded-in-part by Story 6.4 (CR-005)
+
+> **Amendment (CR-005 / FR-030 / BUG-005).** This story's original design — one LLM call rewriting
+> `assembled_markdown` into a single narration script with spoken segues — has been restructured.
+> `tts_prep` now builds an **audio segment plan** from `packet.drafted_stories` (not
+> `assembled_markdown`, which was empty at this stage — `BUG-005`). Narration text is the drafted
+> prose cleaned deterministically; the LLM call is retained only for the pronunciation guide
+> (non-fatal). Spoken section segues (original AC 3) are dropped in favor of Phase 5 musical
+> stingers. `tts_script` is still populated (concatenated narration) for `qa_gate`/resume
+> compatibility. See `docs/spec/03-feature-specs/6-4-audio-segment-plan.md` and
+> `docs/spec/07-decisions/ADR-004.md`. Original ACs 1, 2, 4, 5, 6 still hold in spirit; AC 3
+> (spoken segues) is superseded.
 
 ## Story
 

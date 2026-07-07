@@ -32,7 +32,10 @@ so that I can verify audio output quality before running a full briefing.
 
 - [ ] Implement TTS settings endpoints in `app/api/settings.py` (AC: 1–4)
   - [ ] `GET /api/settings/tts` → current engine, CUDA status
-  - [ ] `PUT /api/settings/tts` → validate engine choice; if Orpheus and no CUDA, return 400 with warning message
+  - [ ] `PUT /api/settings/tts` → accepts form-encoded fields `engine`, `tts_voice` (`Form(...)`
+        params — matches the plain HTML `<form hx-put="...">` in `settings.html`; switched from a
+        JSON body in `cfce0a9`, see `BUG-002`); validate engine choice; if Orpheus and no CUDA,
+        return 400 with warning message
   - [ ] `POST /api/settings/tts/test` → synthesize sample text "Welcome to your morning briefing." → return audio file or inline `<audio>` tag for browser playback
 
 - [ ] Write tests in `tests/api/test_settings.py` (AC: 3, 4)

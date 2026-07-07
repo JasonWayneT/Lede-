@@ -190,11 +190,19 @@ async def run_pipeline(run_id: int, config: AppConfig) -> None:
                     })
                     tts_output = Path(config.data_dir) / "briefings" / str(run_id) / "briefing.mp3"
                     try:
-                        await tts.synthesize(
-                            packet.tts_script,
-                            tts_output,
-                            pronunciation_guide=packet.pronunciation_guide,
-                        )
+                        # FR-030 — synthesize from the segment plan; fall back to the flat script
+                        if packet.audio_segments:
+                            await tts.synthesize_plan(
+                                packet.audio_segments,
+                                tts_output,
+                                pronunciation_guide=packet.pronunciation_guide,
+                            )
+                        else:
+                            await tts.synthesize(
+                                packet.tts_script,
+                                tts_output,
+                                pronunciation_guide=packet.pronunciation_guide,
+                            )
                         audio_path = str(tts_output)
                         _emit(run_id, "log", {"level": "info", "stage": "tts", "message": "Audio synthesized", "ts": _ts()})
                     except StageError as tts_err:
@@ -248,6 +256,131 @@ async def run_pipeline(run_id: int, config: AppConfig) -> None:
             pass  # already handled in _enter_hold
         except Exception as e:
             logger.exception("Unexpected orchestrator error for run %d", run_id)
+            async with session.begin():
+                run = await session.get(Run, run_id)
+                if run:
+                    run.status = "failed"
+                    run.error = str(e)
+                    session.add(run)
+            _emit(run_id, "error", {"code": "STAGE_FAILED", "message": str(e), "ts": _ts()})
+            _emit(run_id, None, None)
+
+
+ON_DEMAND_STAGES = STAGES[2:]  # embed → qa_gate (skip ingest + extract)
+
+
+async def run_pipeline_on_demand(
+    run_id: int,
+    extracted_texts: list[dict],
+    config: AppConfig,
+    source_type: str = "article",
+) -> None:
+    """Run pipeline from embed stage with pre-supplied extracted texts.
+
+    Used by the YouTube and Article on-demand ingest modes (FR-26/FR-27).
+    Bypasses ingest and extract; injects extracted_texts directly into the
+    HandoffPacket before the embed stage runs.
+    """
+    artifacts_dir = Path(config.data_dir) / "artifacts"
+    packet = HandoffPacket(run_id=run_id, extracted_texts=extracted_texts)
+
+    async with get_session() as session:
+        async with session.begin():
+            run = await session.get(Run, run_id)
+            if run:
+                run.status = "running"
+                session.add(run)
+
+        _emit(run_id, "status", {"run_id": run_id, "status": "running", "ts": _ts()})
+
+        audio_path: str | None = None
+
+        try:
+            for stage_num, stage_name, stage_module in ON_DEMAND_STAGES:
+                _emit(run_id, "status", {
+                    "run_id": run_id, "status": "running",
+                    "current_stage": stage_name, "ts": _ts(),
+                })
+
+                try:
+                    packet = await stage_module.run(packet, config)
+                except StageError as e:
+                    packet = await _retry(
+                        stage_module, stage_num, stage_name, packet, config, e, session
+                    )
+
+                if stage_name != "assemble":
+                    handoff.write_packet(packet, artifacts_dir, stage_num, stage_name)
+                    _emit(run_id, "log", {
+                        "level": "info", "stage": stage_name,
+                        "message": f"{stage_name} complete", "ts": _ts(),
+                    })
+
+                if stage_name == "assemble":
+                    handoff.write_packet(packet, artifacts_dir, stage_num, stage_name)
+                    _emit(run_id, "log", {
+                        "level": "info", "stage": "assemble",
+                        "message": "assemble complete", "ts": _ts(),
+                    })
+                    tts_output = Path(config.data_dir) / "briefings" / str(run_id) / "briefing.mp3"
+                    try:
+                        # FR-030 — synthesize from the segment plan; fall back to the flat script
+                        if packet.audio_segments:
+                            await tts.synthesize_plan(
+                                packet.audio_segments,
+                                tts_output,
+                                pronunciation_guide=packet.pronunciation_guide,
+                            )
+                        else:
+                            await tts.synthesize(
+                                packet.tts_script,
+                                tts_output,
+                                pronunciation_guide=packet.pronunciation_guide,
+                            )
+                        audio_path = str(tts_output)
+                        _emit(run_id, "log", {"level": "info", "stage": "tts", "message": "Audio synthesized", "ts": _ts()})
+                    except StageError as tts_err:
+                        logger.error("TTS failed (non-fatal): %s", tts_err.message)
+                        _emit(run_id, "log", {"level": "warning", "stage": "tts", "message": f"Audio skipped: {tts_err.message}", "ts": _ts()})
+
+            section_breakdown: dict[str, int] = {}
+            for story in packet.drafted_stories:
+                sec = story.get("section_name", "Other") if isinstance(story, dict) else "Other"
+                section_breakdown[sec] = section_breakdown.get(sec, 0) + 1
+            story_count = sum(section_breakdown.values())
+
+            async with session.begin():
+                run = await session.get(Run, run_id)
+                if run:
+                    run.status = "complete"
+                    run.error = None
+                    from sqlalchemy.orm.attributes import flag_modified
+                    existing_cfg = dict(run.section_config or {})
+                    existing_cfg["story_count"] = story_count
+                    existing_cfg["section_breakdown"] = section_breakdown
+                    existing_cfg["source_type"] = source_type
+                    run.section_config = existing_cfg
+                    flag_modified(run, "section_config")
+                    session.add(run)
+
+                session.add(BriefingOutput(
+                    run_id=run_id,
+                    markdown_path=packet.markdown_path,
+                    audio_path=audio_path,
+                ))
+
+            _emit(run_id, "complete", {
+                "run_id": run_id,
+                "markdown_path": packet.markdown_path,
+                "audio_path": audio_path,
+                "ts": _ts(),
+            })
+            _emit(run_id, None, None)
+
+        except _HoldException:
+            pass
+        except Exception as e:
+            logger.exception("Unexpected orchestrator error for on-demand run %d", run_id)
             async with session.begin():
                 run = await session.get(Run, run_id)
                 if run:

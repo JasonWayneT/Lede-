@@ -12,6 +12,8 @@
 
 Proves Gmail OAuth authorization stores token in keyring (not filesystem) and invalid/revoked token results in `StageError(code=AUTH_ERROR, retryable=False)`.
 
+Token-storage coverage for the redirect-based OAuth flow (`build_auth_url`/`exchange_code`) lives in `TEST-013`, which superseded this spec's original `authorize()`/`InstalledAppFlow` scope after `6e0a3dd` (see `BUG-003`).
+
 ## Preconditions
 
 - Run from `briefing/` project root

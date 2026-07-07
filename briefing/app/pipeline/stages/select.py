@@ -19,19 +19,13 @@ PROMPT_PATH = Path(__file__).parent.parent.parent.parent / "pipeline_prompts" / 
 
 async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
     prompt_template = PROMPT_PATH.read_text(encoding="utf-8")
-    sections = config.sections
-    if "Other" not in sections:
-        sections = list(sections) + ["Other"]
 
     selected: list[dict] = []
     for cluster in packet.clusters:
         snippets = "\n".join(
             f"- {entry.get('text', '')[:300]}" for entry in cluster
         )
-        prompt = prompt_template.format(
-            sections=", ".join(sections),
-            cluster_texts=snippets,
-        )
+        prompt = prompt_template.format(cluster_texts=snippets)
         try:
             response = await llm.complete(prompt, config)
         except StageError:
@@ -39,7 +33,7 @@ async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
         except Exception as e:
             raise StageError("select", str(e), retryable=True) from e
 
-        section_name = _match_section(response.strip(), sections)
+        section_name = _clean_section_name(response)
         selected.append({"cluster": cluster, "section_name": section_name})
 
     packet.selected_clusters = selected
@@ -47,9 +41,12 @@ async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
     return packet
 
 
-def _match_section(response: str, sections: list[str]) -> str:
-    normalized = response.strip().lower()
-    for s in sections:
-        if s.lower() == normalized:
-            return s
-    return "Other"
+def _clean_section_name(response: str) -> str:
+    """Sanitize the LLM's freeform section name into a short Title Case label."""
+    name = response.strip().strip(".\"'").split("\n")[0].strip()
+    if not name:
+        return "Other"
+    words = name.split()
+    if len(words) > 3:
+        return "Other"
+    return " ".join(w.capitalize() if w.islower() else w for w in words)

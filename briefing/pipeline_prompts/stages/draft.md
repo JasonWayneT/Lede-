@@ -14,10 +14,15 @@ Local stakes: {local_stakes}
 Source material:
 {cluster_texts}
 
+Ground every claim in a specific fact, number, name, or quote from the source material above.
+Do not pad with generic commentary ("marks a significant shift," "underscores the importance of")
+that isn't backed by something actually stated in the source material.
+
 Guardrails (hedging requirements — every item must appear in the prose):
 {guardrails}
 
 Sources: {source_names}
 
-Write the story now. End with exactly: "Sources: {source_names}"
+Write the story now. After the prose, add a blank line, then end with exactly
+this line on its own: "> Sources: {source_names}"
 Output prose only — no labels, no JSON, no explanation.

@@ -16,7 +16,10 @@
     <p class="reading-body">{{ para }}</p>
     {% endfor %}
     {% if section.source %}
-    <p class="reading-source">{{ section.source }}</p>
+    <div class="reading-source">
+      <span class="reading-source-label">Sources</span>
+      <span class="reading-source-names">{{ section.source }}</span>
+    </div>
     {% endif %}
   </div>
   {% endfor %}

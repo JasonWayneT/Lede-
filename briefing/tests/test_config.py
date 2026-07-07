@@ -13,7 +13,7 @@ def test_app_config_defaults():
     assert config.log_level == "INFO"
     assert config.llm_provider == "ollama"
     assert config.briefing_depth == "standard"
-    assert config.ollama_model_name == "llama3.2"
+    assert config.ollama_model_name == "qwen2.5:7b-instruct-q4_K_M"
     assert config.ollama_base_url == "http://localhost:11434"
     assert config.similarity_threshold == 0.75
     assert config.gmail_label == "Newsletters"

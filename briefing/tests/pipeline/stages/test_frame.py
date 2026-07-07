@@ -71,3 +71,70 @@ async def test_frame_guardrails_propagated():
     with patch("app.pipeline.stages.frame.llm.complete", new=AsyncMock(return_value=_FRAME_RESP)):
         result = await frame.run(packet, _config())
     assert result.framed_stories[0]["guardrails"] == ["Check this"]
+
+
+@pytest.mark.asyncio
+async def test_frame_populates_source_texts():
+    # AC-057, AC-060 — frame computes source_texts once, in cluster order.
+    packet = HandoffPacket(run_id=1, selected_clusters=_selected(n_sources=3))
+    with patch("app.pipeline.stages.frame.llm.complete", new=AsyncMock(return_value=_FRAME_RESP)):
+        result = await frame.run(packet, _config())
+    story = result.framed_stories[0]
+    assert story["source_texts"] == ["text 0", "text 1", "text 2"]
+
+
+# ---------------------------------------------------------------------------
+# FR-028 — music sensitivity/story_weight classification (CR-003)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_frame_classifies_sensitivity_and_story_weight():
+    # AC-067, AC-068
+    resp = json.dumps({
+        "lead_angle": "Big news", "local_stakes": "Matters here", "guardrails": [],
+        "sensitivity": "serious", "story_weight": "heavy",
+    })
+    packet = HandoffPacket(run_id=1, selected_clusters=_selected())
+    with patch("app.pipeline.stages.frame.llm.complete", new=AsyncMock(return_value=resp)):
+        result = await frame.run(packet, _config())
+    story = result.framed_stories[0]
+    assert story["sensitivity"] == "serious"
+    assert story["story_weight"] == "heavy"
+
+
+@pytest.mark.asyncio
+async def test_frame_defaults_when_fields_missing():
+    # AC-069 — _FRAME_RESP has no sensitivity/story_weight fields at all.
+    packet = HandoffPacket(run_id=1, selected_clusters=_selected())
+    with patch("app.pipeline.stages.frame.llm.complete", new=AsyncMock(return_value=_FRAME_RESP)):
+        result = await frame.run(packet, _config())
+    story = result.framed_stories[0]
+    assert story["sensitivity"] == "normal"
+    assert story["story_weight"] == "medium"
+
+
+@pytest.mark.asyncio
+async def test_frame_defaults_when_values_invalid():
+    # AC-069 — out-of-enum values must not pass through.
+    resp = json.dumps({
+        "lead_angle": "x", "local_stakes": "y", "guardrails": [],
+        "sensitivity": "catastrophic", "story_weight": "extreme",
+    })
+    packet = HandoffPacket(run_id=1, selected_clusters=_selected())
+    with patch("app.pipeline.stages.frame.llm.complete", new=AsyncMock(return_value=resp)):
+        result = await frame.run(packet, _config())
+    story = result.framed_stories[0]
+    assert story["sensitivity"] == "normal"
+    assert story["story_weight"] == "medium"
+
+
+@pytest.mark.asyncio
+async def test_frame_defaults_present_on_full_json_parse_failure():
+    # AC-069 — the full-fallback branch (response isn't JSON at all) must still set both fields.
+    packet = HandoffPacket(run_id=1, selected_clusters=_selected())
+    with patch("app.pipeline.stages.frame.llm.complete", new=AsyncMock(return_value="not json at all")):
+        result = await frame.run(packet, _config())
+    story = result.framed_stories[0]
+    assert story["sensitivity"] == "normal"
+    assert story["story_weight"] == "medium"

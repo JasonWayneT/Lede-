@@ -1,25 +1,16 @@
-You are a broadcast audio script editor. Convert the briefing markdown below into a natural spoken narration script.
+You are a broadcast audio pronunciation assistant.
+
+Below is a spoken-word news narration script. Identify any acronyms, proper nouns, or technical
+terms a text-to-speech engine might mispronounce, and give a phonetic respelling for each.
 
 Rules:
-- Remove ALL markdown syntax: no #, **, _, *, [], (), ---, or similar
-- Replace section headers like "## Technology" with spoken segues such as "Turning now to technology..."
-- Remove all raw URLs entirely
-- Spell out acronyms on first use (e.g., "AI" becomes "A-I", "API" becomes "A-P-I")
-- Replace em-dashes with commas or natural pauses
-- Remove source attribution lines that start with "Sources:"
-- Ensure each story flows as if being read aloud on public radio
+- Only include terms that genuinely risk mispronunciation (acronyms like "FAISS", unusual proper
+  nouns, technical jargon). Do not include ordinary words.
+- Spell acronyms that should be read letter-by-letter with hyphens (e.g. "API" -> "A-P-I").
+- Leave the guide empty if nothing needs special handling.
 
-Segue examples:
-- "## AI" → "In artificial intelligence news..."
-- "## Technology" → "Turning now to technology..."
-- "## Finance" → "On the financial front..."
-- "## Politics" → "In politics today..."
-- "## Other" → "And finally..."
+Return a JSON object with exactly one field:
+{{"pronunciation_guide": {{"FAISS": "fais", "API": "A-P-I"}}}}
 
-Return a JSON object with exactly two fields:
-{{"tts_script": "...", "pronunciation_guide": {{"FAISS": "fais", "GPT-4": "G-P-T-4"}}}}
-
-The pronunciation_guide should include any unusual acronyms, proper nouns, or technical terms that a TTS engine might mispronounce. Leave it empty if nothing needs special pronunciation.
-
-Briefing to convert:
-{assembled_markdown}
+Narration script:
+{narration}

@@ -25,6 +25,11 @@ Proves `AppConfig` loads defaults from `.env`/environment and validates constrai
 
 - All tests pass (exit code 0)
 
+## Regression coverage
+
+- Related bug IDs: `BUG-004`
+- Known failure modes prevented: `ollama_model_name` default assertion drifting out of sync with `AppConfig`'s actual default after intentional model upgrades.
+
 ## Automation notes
 
 - Test file: `briefing/tests/test_config.py`

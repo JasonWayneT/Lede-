@@ -26,9 +26,11 @@ so that I can reconfigure my Gmail source at any time without re-running the ful
   - [ ] If token present: parse JSON to extract `email` field (stored in token by google-auth)
 
 - [ ] Implement `PUT /api/settings/gmail` in `app/api/settings.py` (AC: 2)
-  - [ ] Accept `{"label": "Newsletters"}` body
+  - [ ] Accept form-encoded fields `label` and `lookback_days` (`Form(...)` params — matches the
+        plain HTML `<form hx-put="...">` in `settings.html`; switched from a JSON body in `1fc854c`,
+        see `BUG-002`)
   - [ ] Persist `gmail_label` to a settings file: `data/settings.json` (or update env-based config — see dev notes)
-  - [ ] Return `{"data": {"label": new_label}}`
+  - [ ] Return `{"data": {"label": new_label, "lookback_days": lookback_days}}`
 
 - [ ] Implement `POST /api/settings/gmail/reauthorize` (AC: 3)
   - [ ] Trigger `gmail.authorize()` — opens browser OAuth flow

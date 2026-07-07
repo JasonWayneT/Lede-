@@ -2,6 +2,7 @@
 
 # Implements ARCH-003
 
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -96,6 +97,17 @@ async def dashboard(request: Request):
         active_run = result.scalars().first()
     run_active = active_run is not None
 
+    # Implements BUG-006 — surface a held (failed, awaiting retry) run on the dashboard itself,
+    # not just on History, so a failure like "Ollama unreachable" isn't silently invisible.
+    hold_run = None
+    async with get_session() as session:
+        result = await session.execute(
+            select(Run).where(Run.status == "hold").order_by(Run.created_at.desc(), Run.id.desc())
+        )
+        held = result.scalars().first()
+        if held:
+            hold_run = {"run_id": held.id, "error": held.error}
+
     # Load schedule info for status bar
     settings_path = Path(config.data_dir) / "settings.json"
     stored: dict = {}
@@ -111,6 +123,7 @@ async def dashboard(request: Request):
     return templates.TemplateResponse(request, "dashboard.html", {
         "active_page": "dashboard",
         "run_active": run_active,
+        "hold_run": hold_run,
         "feed_name": config.gmail_label or "Inbox",
         "briefing": briefing_data,
         "cadence": stored.get("cadence", "off"),
@@ -303,7 +316,8 @@ def _parse_briefing_md(md_text: str) -> dict:
             current = {"title": s[3:].strip(), "paragraphs": [], "source": ""}
         elif current is not None:
             if s.startswith(">") or ("source" in s.lower() and s.startswith("*")):
-                src = s.lstrip(">*_ ").replace("Source:", "").replace("source:", "").strip().rstrip("*_")
+                src = s.lstrip(">*_ ")
+                src = re.sub(r"^sources?:\s*", "", src, flags=re.IGNORECASE).strip().rstrip("*_")
                 current["source"] = src
             elif s:
                 current["paragraphs"].append(s)

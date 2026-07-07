@@ -69,6 +69,28 @@ async def test_ollama_uses_configured_model():
 
 
 @pytest.mark.asyncio
+async def test_ollama_complete_sets_num_ctx():
+    # Regression test for BUG-001 / AC-056 — Ollama silently defaults num_ctx to 2048 unless
+    # explicitly set, regardless of what the configured model actually supports.
+    cfg = _config(llm_provider="ollama", ollama_num_ctx=8192)
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"response": "ok"}
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        mock_client_cls.return_value = mock_client
+
+        await llm_module.complete("test", cfg)
+        call_kwargs = mock_client.post.call_args
+        body = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
+        assert body["options"]["num_ctx"] == 8192
+
+
+@pytest.mark.asyncio
 async def test_ollama_connect_error_raises_stage_error():
     import httpx
 

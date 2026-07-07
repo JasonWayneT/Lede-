@@ -19,13 +19,11 @@ _MARKDOWN_PATTERN = re.compile(r"##|(?<!\*)\*\*|(?<!\[)\[.+\]\(.+\)|https?://")
 async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
     failures: list[str] = []
 
-    # Check 1 — section coverage (skip "Other")
-    story_sections = {s.get("section_name") for s in packet.drafted_stories}
-    for section in config.sections:
-        if section == "Other":
-            continue
-        if section not in story_sections:
-            failures.append(f"Section '{section}' has no stories")
+    # Check 1 — at least one story was selected overall.
+    # Sections are now derived from content per-run, so an empty section on a
+    # given day (e.g. no Politics news today) is expected, not a failure.
+    if not packet.drafted_stories:
+        failures.append("No stories were drafted for this briefing")
 
     # Check 2 — source attribution
     for story in packet.drafted_stories:

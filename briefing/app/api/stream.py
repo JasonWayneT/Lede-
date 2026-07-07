@@ -18,7 +18,7 @@ router = APIRouter()
 
 _queues: dict[int, asyncio.Queue] = {}
 
-_TIMEOUT_SECONDS = 300
+_TIMEOUT_SECONDS = 1800
 
 
 def get_or_create_queue(run_id: int) -> asyncio.Queue:

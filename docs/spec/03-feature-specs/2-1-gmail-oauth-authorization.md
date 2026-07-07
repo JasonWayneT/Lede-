@@ -8,6 +8,16 @@ As a user setting up Briefing for the first time,
 I want to authorize Gmail access through a browser OAuth flow,
 so that the app can read my newsletter emails without me managing credentials manually.
 
+> **Superseded by `6e0a3dd`:** the OAuth mechanism below (`InstalledAppFlow.run_local_server()`,
+> `gmail.authorize()`) was replaced by a redirect-based flow because a blocking local server can't
+> run inside a FastAPI request handler. Current implementation: `gmail.build_auth_url(config)`
+> returns a Google consent URL; `GET /api/settings/gmail/authorize-redirect` redirects the browser
+> to it; `GET /oauth/callback` (in `app/main.py`) receives `code`/`state` and calls
+> `gmail.exchange_code(code, state, config)`, which exchanges the code and stores the token via
+> `credentials.set(GMAIL_OAUTH_TOKEN, ...)` exactly as described below. See `BUG-003` and `TEST-013`.
+> The acceptance criteria, scope constraint (read-only), and token-storage guarantee below are
+> still accurate — only the mechanism for obtaining the token changed.
+
 ## Acceptance Criteria
 
 1. **Given** a user running `setup.py` for the first time, **When** they reach the Gmail authorization step, **Then** their default browser opens to the Google OAuth consent screen with read-only Gmail scope

@@ -5,37 +5,28 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
 from app.core.config import AppConfig
 from app.core.errors import StageError
 from app.pipeline.handoff import HandoffPacket
+from app.pipeline.ordering import order_stories_by_section
 
 logger = logging.getLogger(__name__)
 
 
 async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
     try:
-        stories_by_section: dict[str, list[dict]] = defaultdict(list)
-        for story in packet.drafted_stories:
-            stories_by_section[story.get("section_name", "Other")].append(story)
-
-        # Order sections per config, Other always last
-        sections_order = [s for s in config.sections if s != "Other"] + ["Other"]
-        ordered_sections = [s for s in sections_order if s in stories_by_section]
-        # Add any remaining sections not in config order
-        for s in stories_by_section:
-            if s not in ordered_sections:
-                ordered_sections.append(s)
+        # Shared ordering so the markdown and the audio segment plan (tts_prep) agree — FR-030
+        ordered = order_stories_by_section(packet.drafted_stories, config)
 
         # Build header
         total = len(packet.drafted_stories)
         date_str = datetime.utcnow().strftime("%Y-%m-%d")
         breakdown_parts = []
-        for sec in ordered_sections:
-            count = len(stories_by_section[sec])
+        for sec, section_stories in ordered:
+            count = len(section_stories)
             word = "story" if count == 1 else "stories"
             breakdown_parts.append(f"{sec}: {count} {word}")
         breakdown = " | ".join(breakdown_parts)
@@ -47,10 +38,7 @@ async def run(packet: HandoffPacket, config: AppConfig) -> HandoffPacket:
             "",
         ]
 
-        for section in ordered_sections:
-            section_stories = sorted(
-                stories_by_section[section], key=lambda s: s.get("source_count", 0), reverse=True
-            )
+        for section, section_stories in ordered:
             lines.append(f"## {section}")
             lines.append("")
             for story in section_stories:

@@ -23,6 +23,8 @@ class AppConfig(BaseSettings):
     llm_provider: str = "ollama"
     ollama_model_name: str = "qwen2.5:7b-instruct-q4_K_M"
     ollama_base_url: str = "http://localhost:11434"
+    # Implements ARCH-006, BUG-001 — explicit context window, not Ollama's silent 2048 default
+    ollama_num_ctx: int = 8192
     openai_model_name: str = "gpt-4o-mini"
     anthropic_model_name: str = "claude-haiku-4-5-20251001"
     gemini_model_name: str = "gemini-1.5-flash"
@@ -76,6 +78,13 @@ class AppConfig(BaseSettings):
         valid = {"brief", "standard", "deep"}
         if v not in valid:
             raise ValueError(f"Invalid briefing_depth '{v}'. Must be one of: {sorted(valid)}")
+        return v
+
+    @field_validator("ollama_num_ctx")
+    @classmethod
+    def _validate_ollama_num_ctx(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"Invalid ollama_num_ctx '{v}'. Must be a positive integer.")
         return v
 
     @field_validator("sections", mode="before")

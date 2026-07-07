@@ -102,6 +102,9 @@ FR-22: Epic 8 -- Settings: Topic Sections
 FR-23: Epic 8 -- Settings: Briefing Depth
 FR-24: Epic 8 -- Settings: LLM Provider
 FR-25: Epic 8 + Epic 9 -- Schedule UI (Epic 8), schedule execution + daemon (Epic 9)
+FR-26: Epic 13 -- YouTube transcript ingest service
+FR-27: Epic 13 -- Article body extraction service (trafilatura + Jina Reader fallback)
+FR-28: Epic 13 -- On-demand ingest UI and API endpoint
 
 ---
 
@@ -154,6 +157,10 @@ Claude Desktop and AI agents like Hermes can trigger and retrieve briefings as M
 ### Epic 12: Testing and Documentation
 The codebase has a complete test suite and a README enabling a new builder to set up in under 15 minutes.
 **FRs covered:** SM-2, NFR-7
+
+### Epic 13: On-Demand Ingest — YouTube and Article Modes
+Users can paste YouTube URLs or article URLs and get a public radio-style audio briefing from that content, using the same pipeline and TTS delivery as the newsletter briefing.
+**FRs covered:** FR-26, FR-27, FR-28
 
 ---
 
@@ -1574,3 +1581,157 @@ So that I can get value from Briefing without needing to read source code.
 **Given** the README followed by a new technical user meeting the prerequisites
 **When** they time a full setup from clone to first briefing
 **Then** it takes under 15 minutes (SM-2)
+
+---
+
+## Epic 13: On-Demand Ingest — YouTube and Article Modes
+
+After this epic, users can paste YouTube URLs or article URLs into the dashboard and receive a public radio-style briefing and audio file from that content. The same pipeline, TTS engine, and history list are used — only the ingest source changes.
+
+### Story 13.1: YouTube Transcript Ingest Service
+
+As a user,
+I want to paste a YouTube URL and have the system extract the transcript,
+So that I can get a briefing from a video without watching it.
+
+**Acceptance Criteria:**
+
+**Given** a valid YouTube URL with an available transcript
+**When** the YouTube ingest service runs
+**Then** the full transcript text is returned as a single string with speaker labels and timestamps stripped
+
+**Given** a YouTube URL where no transcript is available (disabled captions)
+**When** the ingest service runs
+**Then** the URL is skipped with a WARNING log and a user-visible message: "No transcript available for [URL]"
+
+**Given** multiple YouTube URLs submitted together
+**When** the ingest service runs
+**Then** each transcript is extracted independently and returned as a separate content item keyed by URL
+
+**Given** the YouTube ingest service
+**When** I inspect its dependencies
+**Then** it uses `youtube-transcript-api` — no browser automation, no scraping, no Selenium
+
+**Given** a private or age-restricted YouTube video
+**When** the ingest service attempts extraction
+**Then** it returns a clear error message and skips that URL — it does not crash the run
+
+### Story 13.2: Article Body Extraction Service
+
+As a user,
+I want to paste an article URL and have the system extract just the article body,
+So that I can get a briefing from a web article without ads, navigation, or paywalls cluttering the content.
+
+**Acceptance Criteria:**
+
+**Given** a public article URL
+**When** the article extraction service runs
+**Then** `trafilatura` is used as the primary extractor and returns the article body as clean plain text
+
+**Given** a URL where `trafilatura` returns fewer than 200 words
+**When** the extraction service evaluates the result
+**Then** it falls back to Jina Reader (`r.jina.ai/{url}`) and uses that response as the article body
+
+**Given** both `trafilatura` and Jina Reader returning insufficient content (< 200 words)
+**When** the extraction service finishes
+**Then** the URL is skipped with a WARNING: "Could not extract sufficient content from [URL]"
+
+**Given** a JavaScript-rendered page that trafilatura cannot parse
+**When** trafilatura returns sparse or empty content
+**Then** the Jina Reader fallback handles it and returns clean markdown body text
+
+**Given** the article extraction service
+**When** I inspect its dependencies
+**Then** `trafilatura` is in pyproject.toml and Jina Reader is called via HTTP — no headless browser required
+
+### Story 13.3: On-Demand Pipeline Run — Bypass Gmail Ingest
+
+As a developer,
+I want on-demand content (YouTube transcripts or article bodies) to enter the pipeline at the embed stage, bypassing Gmail ingest,
+So that all downstream stages work identically to a newsletter run without code duplication.
+
+**Acceptance Criteria:**
+
+**Given** a set of extracted content items from YouTube or article sources
+**When** the on-demand run starts
+**Then** the HandoffPacket is populated with `extracted_texts` directly — the ingest stage is skipped entirely
+
+**Given** the HandoffPacket populated by on-demand ingest
+**When** the embed stage runs
+**Then** it processes the content identically to newsletter-sourced extracted_texts — no stage-level awareness of the source type
+
+**Given** an on-demand run completing
+**When** it appears in the Run DB record
+**Then** `section_config` includes a `source_type` field set to "youtube" or "article" (or "mixed" if both)
+
+**Given** an on-demand run that produces no usable content (all URLs skipped)
+**When** the pipeline evaluates after ingest
+**Then** it halts early with status "no_content" and a user-visible message identifying which URLs failed
+
+**Given** the on-demand pipeline path
+**When** I inspect the orchestrator
+**Then** it reuses the same STAGES list from Story 7.1, starting at embed — no parallel code path exists
+
+### Story 13.4: On-Demand Ingest API and Dashboard UI
+
+As a user,
+I want a URL input area on the dashboard where I can paste links and trigger an on-demand briefing,
+So that getting a briefing from a video or article is as simple as pasting a link.
+
+**Acceptance Criteria:**
+
+**Given** the dashboard
+**When** I view it
+**Then** a "From URLs" input section is visible below the "Run Briefing" button, with a multi-line text area and a "Run from URLs" submit button
+
+**Given** I paste one or more URLs (YouTube, article, or mixed) into the text area and click submit
+**When** the request is processed
+**Then** `POST /api/briefings/on-demand` is called with `{"urls": [...]}`, a run_id is returned, and the live SSE log activates
+
+**Given** a submitted URL list containing YouTube URLs
+**When** the system processes them
+**Then** YouTube URLs (matching `youtube.com` or `youtu.be`) are auto-detected and routed to the YouTube ingest service — the user does not need to specify the type
+
+**Given** the on-demand run completing
+**When** the result appears in history
+**Then** the history entry shows a "YouTube" or "Article" or "Mixed" badge alongside the date and story count
+
+**Given** a concurrent newsletter run already in progress
+**When** I submit an on-demand request
+**Then** a 409 response is returned: "A run is already in progress" — same behavior as duplicate newsletter runs
+
+**Given** `POST /api/briefings/on-demand` receiving an empty URL list
+**When** the endpoint validates the request
+**Then** a 400 response is returned: "At least one URL is required"
+
+### Story 13.5: Tests for On-Demand Ingest
+
+As a developer,
+I want tests for the YouTube service, article extraction service, on-demand API endpoint, and pipeline bypass logic,
+So that the on-demand path has the same test coverage as the newsletter path.
+
+**Acceptance Criteria:**
+
+**Given** the YouTube ingest service with a mocked `youtube-transcript-api` response
+**When** the test runs
+**Then** the returned transcript matches the mocked content with timestamps and speaker labels stripped
+
+**Given** a URL where the mocked transcript API raises `TranscriptsDisabled`
+**When** the test runs
+**Then** the service returns an empty result and logs a warning — no exception propagates
+
+**Given** the article extraction service with a mocked `trafilatura.extract()` returning fewer than 200 words
+**When** the test runs
+**Then** the service falls back to Jina Reader (mocked HTTP response) and returns that content
+
+**Given** `POST /api/briefings/on-demand` with a valid URL list and mocked pipeline
+**When** the test runs
+**Then** a 200 response is returned with a run_id
+
+**Given** `POST /api/briefings/on-demand` with an empty URL list
+**When** the test runs
+**Then** a 400 response is returned
+
+**Given** the on-demand orchestrator path with mocked extracted content
+**When** the test runs
+**Then** the embed stage receives the content directly and the ingest stage is not called

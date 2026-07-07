@@ -72,6 +72,27 @@ End each drafted story with: `"Sources: {comma-separated sender names}"`. The as
 - [Source: docs/ARCHITECTURE.md § "Structure Patterns — Handoff Artifact Files"] — `stage_07_draft.json`
 - [Source: docs/epics-stories.md § "Story 5.2"] — acceptance criteria
 
+## Amendment (CR-001 / FR-027 / ARCH-006)
+
+The prompt-building snippet was a hard `entry.get("text", "")[:500]` slice per cluster source,
+independent of (and inconsistent with) frame.py's 300-char slice — starving the writer of real
+source content and producing generic, headline-level prose. Draft now reads
+`story.get("source_texts")` (computed once by frame.py via `condense.get_source_texts()`) instead
+of re-deriving text from the raw cluster; if `source_texts` is absent — e.g. an older persisted
+handoff artifact replayed in a partial rerun — it falls back to computing condensed text per entry
+itself. `draft.md` was also tightened to require claims grounded in source specifics rather than
+generic "why it matters" commentary. See
+`docs/spec/03-feature-specs/5-4-condense-long-sources.md` and `docs/spec/07-decisions/ADR-001.md`.
+Original acceptance criteria (1-8 above) are unchanged and still hold.
+
+## Amendment 2 (CR-004 / FR-029)
+
+Each drafted story now also gets a `selected_music` field — `{"asset_id", "style", "file"}` or
+`None` — computed via `app.services.music.select_music(segment_role="main_summary", ...)` from the
+story's `section_name` and `sensitivity`. Not yet consumed by anything (audio mixing is Phase 5).
+See `docs/spec/03-feature-specs/5-6-music-selection.md` and `docs/spec/07-decisions/ADR-003.md`.
+Original acceptance criteria (1-8 above) are unchanged and still hold.
+
 ## Dev Agent Record
 
 ### Agent Model Used

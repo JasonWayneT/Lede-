@@ -358,11 +358,51 @@ User can configure a run cadence (daily, every other day, weekly, or off), a pre
 
 ---
 
+---
+
+### 4.8 On-Demand Ingest — YouTube and Article Modes
+
+**Description:** In addition to the scheduled Gmail ingest, users can feed individual pieces of content into the pipeline on demand. Two modes are supported: YouTube videos (transcript extraction) and web articles (body extraction). Both modes skip the Gmail ingest stage entirely and inject content directly into the extract stage, producing a briefing from whatever the user provides. The same public radio narrative style and TTS delivery apply as in the newsletter briefing. Realizes a new user journey: *UJ-4. Jason drops a YouTube link and gets a listenble NPR-style segment about it.*
+
+**Functional Requirements:**
+
+#### FR-26: YouTube Transcript Ingest
+User can paste one or more YouTube URLs into the app and trigger a pipeline run using the video transcript(s) as source material.
+
+**Consequences (testable):**
+- The system extracts the transcript from each YouTube URL using the YouTube transcript API (no browser or scraping required)
+- If a video has no available transcript (auto-generated or manual), the URL is skipped with a warning and processing continues with remaining URLs
+- Transcripts are treated as extracted text and injected at the embed stage, bypassing Gmail ingest and HTML extraction
+- All downstream stages (cluster, select, frame, draft, tts_prep, assemble, qa_gate) run identically to a newsletter run
+- A YouTube run is recorded in history alongside newsletter runs with a distinct "YouTube" source label
+
+#### FR-27: Article URL Ingest
+User can paste one or more article URLs and trigger a pipeline run using the article body text as source material.
+
+**Consequences (testable):**
+- The system extracts the article body using `trafilatura` as the primary extractor
+- If `trafilatura` returns fewer than 200 words, the system falls back to Jinja Reader (`r.jina.ai/{url}`) as a secondary extractor
+- If both extractors fail or return insufficient content, the URL is skipped with a warning
+- Extracted article text is injected at the embed stage, bypassing Gmail ingest and HTML extraction
+- An article run is recorded in history with a distinct "Article" source label
+
+#### FR-28: On-Demand Ingest UI
+The dashboard includes a secondary input area for on-demand ingest alongside the newsletter "Run Briefing" button.
+
+**Consequences (testable):**
+- User can paste one or more URLs (YouTube or article, mixed is supported) into a text area
+- Selecting the ingest mode (YouTube / Article / Auto-detect) is optional — the system auto-detects YouTube URLs by domain
+- Submitting triggers a run via `POST /api/briefings/on-demand` with the provided URLs and detected mode
+- The same live SSE pipeline log displays progress for on-demand runs
+- On-demand runs appear in history identically to newsletter runs with source label indicating type
+
+---
+
 ## 5. Non-Goals (Explicit)
 
 - **No multi-user support** — one Gmail account, one local instance
 - **No hosted / cloud version** — self-hosted only in V1
-- **No non-Gmail sources** — RSS, Substack API, other inboxes are out of scope for V1
+- **No non-Gmail sources** — RSS, Substack API, other inboxes are out of scope for V1 *[NOTE: YouTube and article on-demand modes added in V1.1 as FR-26/27/28]*
 - **No email delivery of the Briefing** — output is local files only
 - **No mobile app** — browser UI on desktop only
 
@@ -392,8 +432,14 @@ User can configure a run cadence (daily, every other day, weekly, or off), a pre
 - Orpheus TTS (GPU upgrade path) — deferred to V2
 - Additional voice styles beyond NPR default — deferred to V2
 - Web UI beyond localhost (auth, HTTPS, multi-user) — deferred to V3+
-- Non-Gmail sources — deferred to V2+
+- Non-Gmail sources (RSS, Substack) — deferred to V2+
 - Python packaging / installer to hide terminal setup — deferred to V2+ `[NOTE FOR PM: real friction point for broader distribution]`
+
+### 6.3 V1.1 Additions (On-Demand Ingest)
+
+- **FR-26:** YouTube transcript ingest — paste YouTube URLs, get a briefing from the transcript
+- **FR-27:** Article URL ingest — paste article URLs, body extracted via trafilatura + Jinja Reader fallback
+- **FR-28:** On-demand ingest UI — URL text area on dashboard, auto-detects YouTube vs. article, runs same pipeline
 
 ---
 

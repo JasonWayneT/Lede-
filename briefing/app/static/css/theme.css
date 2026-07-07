@@ -365,13 +365,25 @@ ul, ol { list-style: none; }
   margin-bottom: 12px;
 }
 .reading-source {
-  font-size: 12px;
-  font-style: italic;
-  color: var(--text-muted);
-  padding-left: 12px;
-  border-left: 2px solid var(--bg-subtle);
-  margin-top: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 16px;
   margin-bottom: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.reading-source-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+.reading-source-names {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .briefing-footer {
   display: flex;
@@ -452,7 +464,7 @@ ul, ol { list-style: none; }
 }
 .audio-progress {
   height: 100%;
-  width: 30%;
+  width: 0%;
   background: var(--accent);
   border-radius: 2px;
   position: relative;
@@ -662,6 +674,75 @@ ul, ol { list-style: none; }
   color: var(--text-muted);
   margin-bottom: 32px;
 }
+
+/* ─── MODE TABS (Epic 13 — On-Demand Ingest) ────────────────── */
+.mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.mode-tab:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.mode-tab.active {
+  background: var(--accent-muted);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.mode-tab svg { opacity: 0.6; }
+.mode-tab.active svg { opacity: 1; }
+
+/* ─── URL INPUT PANEL ────────────────────────────────────────── */
+.url-panel {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.url-panel.visible { display: flex; }
+.url-panel-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.url-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  height: 96px;
+  resize: vertical;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-standard);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.url-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+.url-textarea::placeholder { color: var(--text-disabled); }
+.url-panel-hint { font-size: 12px; color: var(--text-muted); }
 
 /* ─── ALERT ──────────────────────────────────────────────────── */
 .alert {

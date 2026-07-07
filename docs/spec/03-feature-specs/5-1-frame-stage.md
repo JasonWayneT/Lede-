@@ -69,6 +69,26 @@ These are implementation decisions not specified in the epics — use the thresh
 - [Source: docs/ARCHITECTURE.md § "Structure Patterns — Handoff Artifact Files"] — `stage_06_frame.json`
 - [Source: docs/epics-stories.md § "Story 5.1"] — acceptance criteria
 
+## Amendment (CR-001 / FR-027 / ARCH-006)
+
+The prompt-building snippet was a hard `entry.get("text", "")[:300]` slice per cluster source —
+a fixed truncation independent of the (separate, inconsistent) 500-char slice draft.py used. Both
+are replaced: frame now calls `condense.get_source_texts(cluster, config)` once per cluster,
+which passes sources under `SOURCE_TEXT_BUDGET_CHARS` through unmodified and condenses (rather than
+truncates) sources over budget. The result is stored as `source_texts` on the framed story dict so
+draft.py can reuse it without re-truncating or re-condensing. See
+`docs/spec/03-feature-specs/5-4-condense-long-sources.md` and `docs/spec/07-decisions/ADR-001.md`.
+Original acceptance criteria (1-5 above) are unchanged and still hold.
+
+## Amendment 2 (CR-003 / FR-028)
+
+The frame stage's structured-output call now also returns `sensitivity` and `story_weight`,
+validated against fixed enums with safe defaults (`normal`/`medium`) on missing or invalid values.
+This is Phase 2 of the music roadmap — classification only, no selection/mixing logic consumes
+these fields yet. See `docs/spec/03-feature-specs/5-5-music-classification.md` and
+`docs/spec/07-decisions/ADR-002.md`. Original acceptance criteria (1-5 above) are unchanged and
+still hold.
+
 ## Dev Agent Record
 
 ### Agent Model Used

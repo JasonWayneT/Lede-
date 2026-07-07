@@ -66,6 +66,14 @@ Architecture enforcement: stages import `from app.services import llm` and call 
 - [Source: docs/ARCHITECTURE.md § "Format Patterns — API Error Envelope — code values"] — `PROVIDER_UNAVAILABLE`
 - [Source: docs/epics-stories.md § "Story 3.1"] — acceptance criteria
 
+## Amendment (CR-001 / BUG-001 / ARCH-006)
+
+`_ollama_complete` was found to never set `options.num_ctx`, silently capping every Ollama request
+at Ollama's 2048-token default regardless of the configured model's real context window. Fixed by
+adding `AppConfig.ollama_num_ctx: int = 8192` and including `"options": {"num_ctx": config.ollama_num_ctx}`
+in the request body. See `docs/spec/09-known-issues/BUG-001.md` and `docs/spec/07-decisions/ADR-001.md`.
+Original acceptance criteria (1-4 above) are unchanged and still hold.
+
 ## Dev Agent Record
 
 ### Agent Model Used

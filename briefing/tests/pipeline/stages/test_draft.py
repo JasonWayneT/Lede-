@@ -67,3 +67,57 @@ async def test_draft_prose_stored():
     with patch("app.pipeline.stages.draft.llm.complete", new=AsyncMock(return_value="Final prose.")):
         result = await draft.run(packet, _config())
     assert result.drafted_stories[0]["prose"] == "Final prose."
+
+
+@pytest.mark.asyncio
+async def test_draft_uses_precomputed_source_texts():
+    # AC-060 — draft must use frame's source_texts, not re-derive from the raw cluster.
+    stories = _framed_stories(n=1)
+    stories[0]["source_texts"] = ["condensed version, not raw cluster text"]
+    packet = HandoffPacket(run_id=1, framed_stories=stories)
+    captured_prompts = []
+
+    async def capture_prompt(prompt, config, **kwargs):
+        captured_prompts.append(prompt)
+        return "Story."
+
+    with patch("app.pipeline.stages.draft.llm.complete", new=capture_prompt):
+        await draft.run(packet, _config())
+
+    assert "condensed version, not raw cluster text" in captured_prompts[0]
+    assert "content" not in captured_prompts[0]  # the raw cluster entry's text
+
+
+@pytest.mark.asyncio
+async def test_draft_falls_back_when_source_texts_missing():
+    # AC-060 fallback — older persisted handoff artifacts won't have source_texts.
+    stories = _framed_stories(n=1)
+    assert "source_texts" not in stories[0]
+    packet = HandoffPacket(run_id=1, framed_stories=stories)
+
+    with patch("app.pipeline.stages.draft.llm.complete", new=AsyncMock(return_value="Story.")):
+        result = await draft.run(packet, _config())
+
+    assert len(result.drafted_stories) == 1
+
+
+@pytest.mark.asyncio
+async def test_draft_attaches_selected_music_for_normal_story():
+    # FR-029 — section "AI" + default sensitivity "normal" resolves against the real music bank.
+    packet = HandoffPacket(run_id=1, framed_stories=_framed_stories(n=1))
+    with patch("app.pipeline.stages.draft.llm.complete", new=AsyncMock(return_value="Story.")):
+        result = await draft.run(packet, _config())
+    selected = result.drafted_stories[0]["selected_music"]
+    assert selected is not None
+    assert selected["style"] == "modern_tech_digest"
+
+
+@pytest.mark.asyncio
+async def test_draft_no_music_for_sensitive_story():
+    # FR-029, AC-071 — sensitivity gate applies even though section would otherwise match.
+    stories = _framed_stories(n=1)
+    stories[0]["sensitivity"] = "sensitive"
+    packet = HandoffPacket(run_id=1, framed_stories=stories)
+    with patch("app.pipeline.stages.draft.llm.complete", new=AsyncMock(return_value="Story.")):
+        result = await draft.run(packet, _config())
+    assert result.drafted_stories[0]["selected_music"] is None
